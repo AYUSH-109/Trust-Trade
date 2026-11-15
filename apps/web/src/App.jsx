@@ -21,6 +21,54 @@ function App() {
   const [wallet, setWallet] = useState("");
   const [authStatus, setAuthStatus] = useState("idle");
   const [token, setToken] = useState(() => localStorage.getItem("trust_trade_token") ?? "");
+  const [userId, setUserId] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    description: "",
+    price: "",
+    category: ""
+  });
+
+  useEffect(() => {
+    if (!token) return undefined;
+
+    fetch(`${apiUrl}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? "Session expired");
+        setWallet(result.data.wallet);
+        setUserId(result.data.id);
+        setAuthStatus("Connected");
+      })
+      .catch((error) => {
+        console.error(error);
+        handleLogout();
+      });
+
+    return undefined;
+  }, [token]);
+
+  useEffect(() => {
+    if (!window.ethereum) return undefined;
+
+    const handleAccountsChanged = () => {
+      handleLogout("Wallet changed. Connect again.");
+    };
+    const handleChainChanged = () => {
+      handleLogout("Network changed. Connect again.");
+    };
+
+    window.ethereum.on("accountsChanged", handleAccountsChanged);
+    window.ethereum.on("chainChanged", handleChainChanged);
+
+    return () => {
+      window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+      window.ethereum.removeListener("chainChanged", handleChainChanged);
+    };
+  }, []);
 
   useEffect(() => {
     async function loadListings() {
@@ -135,6 +183,7 @@ function App() {
       }
 
       setWallet(verifyResult.data.user.wallet);
+      setUserId(verifyResult.data.user.id);
       setToken(verifyResult.data.token);
       localStorage.setItem("trust_trade_token", verifyResult.data.token);
       setAuthStatus("Connected");
@@ -142,6 +191,16 @@ function App() {
       console.error(error);
       setAuthStatus(error.message);
     }
+
+  }
+
+  function handleLogout(message = "Disconnected") {
+    localStorage.removeItem("trust_trade_token");
+    setToken("");
+    setWallet("");
+    setUserId("");
+    setAuthStatus(message);
+    setEditMode(false);
   }
 
   async function handleListingSelect(listingId) {
@@ -156,10 +215,71 @@ function App() {
       }
 
       setSelectedListing(result.data);
+      setEditForm({
+        title: result.data.title,
+        description: result.data.description,
+        price: result.data.price,
+        category: result.data.category
+      });
+      setEditMode(false);
       setDetailStatus("ready");
     } catch (error) {
       console.error(error);
       setDetailStatus("error");
+    }
+
+  }
+
+  function handleEditChange(event) {
+    const { name, value } = event.target;
+    setEditForm((current) => ({ ...current, [name]: value }));
+  }
+
+  async function handleUpdateListing(event) {
+    event.preventDefault();
+    setStatus({ type: "loading", message: "Saving listing..." });
+
+    try {
+      const response = await fetch(`${apiUrl}/api/listings/${selectedListing.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(editForm)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to update listing");
+
+      setSelectedListing(result.data);
+      setListings((current) =>
+        current.map((listing) => (listing.id === result.data.id ? result.data : listing))
+      );
+      setEditMode(false);
+      setStatus({ type: "success", message: "Listing updated." });
+    } catch (error) {
+      setStatus({ type: "error", message: error.message });
+    }
+  }
+
+  async function handleDeleteListing() {
+    if (!window.confirm("Delete this listing?")) return;
+
+    try {
+      const response = await fetch(`${apiUrl}/api/listings/${selectedListing.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const result = response.status === 204 ? null : await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to delete listing");
+
+      setListings((current) =>
+        current.filter((listing) => listing.id !== selectedListing.id)
+      );
+      setSelectedListing(null);
+      setStatus({ type: "success", message: "Listing deleted." });
+    } catch (error) {
+      setStatus({ type: "error", message: error.message });
     }
   }
 
@@ -169,6 +289,11 @@ function App() {
         <button className="wallet-button" type="button" onClick={handleConnectWallet}>
           {wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "Connect MetaMask"}
         </button>
+        {wallet && (
+          <button className="logout-button" type="button" onClick={() => handleLogout()}>
+            Logout
+          </button>
+        )}
         <p className="eyebrow">TRUST TRADE</p>
         <h1>Sell what you no longer need.</h1>
         <p className="hero-copy">
@@ -362,9 +487,59 @@ function App() {
             <p className="seller-line">
               Listed by {selectedListing.seller.name ?? selectedListing.seller.wallet}
             </p>
-            <button className="escrow-button" type="button" disabled>
-              Buy with escrow (coming next)
-            </button>
+            {selectedListing.seller.id === userId ? (
+              editMode ? (
+                <form className="edit-form" onSubmit={handleUpdateListing}>
+                  <label>
+                    Title
+                    <input name="title" value={editForm.title} onChange={handleEditChange} />
+                  </label>
+                  <label>
+                    Description
+                    <textarea
+                      name="description"
+                      value={editForm.description}
+                      onChange={handleEditChange}
+                      rows="4"
+                    />
+                  </label>
+                  <label>
+                    Price
+                    <input
+                      name="price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editForm.price}
+                      onChange={handleEditChange}
+                    />
+                  </label>
+                  <label>
+                    Category
+                    <input name="category" value={editForm.category} onChange={handleEditChange} />
+                  </label>
+                  <button type="submit" disabled={status.type === "loading"}>
+                    Save changes
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => setEditMode(false)}>
+                    Cancel
+                  </button>
+                </form>
+              ) : (
+                <div className="owner-actions">
+                  <button type="button" onClick={() => setEditMode(true)}>
+                    Edit listing
+                  </button>
+                  <button type="button" className="danger-button" onClick={handleDeleteListing}>
+                    Delete listing
+                  </button>
+                </div>
+              )
+            ) : (
+              <button className="escrow-button" type="button" disabled>
+                Buy with escrow (coming next)
+              </button>
+            )}
           </div>
         </section>
       )}

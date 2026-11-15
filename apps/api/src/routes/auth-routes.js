@@ -1,5 +1,10 @@
 import { Router } from "express";
-import { createChallenge, verifyChallenge } from "../services/auth-service.js";
+import { requireAuth } from "../middleware/require-auth.js";
+import {
+  createChallenge,
+  findUserById,
+  verifyChallenge
+} from "../services/auth-service.js";
 
 const router = Router();
 
@@ -38,6 +43,21 @@ router.post("/verify", async (request, response) => {
   } catch (error) {
     console.error("Failed to verify wallet challenge", error);
     return response.status(401).json({ error: "Wallet authentication failed" });
+  }
+});
+
+router.get("/me", requireAuth, async (request, response) => {
+  try {
+    const user = await findUserById(request.auth.sub);
+
+    if (!user) {
+      return response.status(401).json({ error: "User no longer exists" });
+    }
+
+    return response.json({ data: user });
+  } catch (error) {
+    console.error("Failed to load authenticated user", error);
+    return response.status(500).json({ error: "Unable to load authenticated user" });
   }
 });
 

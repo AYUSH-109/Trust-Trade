@@ -49,3 +49,34 @@ export function getListingData(input, sellerId) {
 
   return data;
 }
+
+export function validateUpdateListing(input) {
+  const errors = {};
+
+  if ("title" in input && !isNonEmptyString(input.title)) {
+    errors.title = "Title must be a non-empty string";
+  }
+  if ("description" in input && !isNonEmptyString(input.description)) {
+    errors.description = "Description must be a non-empty string";
+  }
+  if ("price" in input && !isValidPrice(input.price)) {
+    errors.price = "Price must be a non-negative number";
+  }
+  if ("category" in input && !isNonEmptyString(input.category)) {
+    errors.category = "Category must be a non-empty string";
+  }
+
+  return errors;
+}
+
+export function getListingUpdateData(input) {
+  const data = {};
+  const fields = ["title", "description", "category"];
+
+  for (const field of fields) {
+    if (field in input) data[field] = input[field].trim();
+  }
+
+  if ("price" in input) data.price = String(input.price);
+  return data;
+}

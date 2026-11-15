@@ -88,9 +88,9 @@ PATCH  /api/listings/:id
 DELETE /api/listings/:id
 ```
 
-It includes request validation, Cloudinary uploads, PostgreSQL image metadata, serialized decimal prices, listing retrieval, listing detail endpoints, and JWT-protected creation.
+It includes request validation, Cloudinary uploads, PostgreSQL image metadata, serialized decimal prices, listing retrieval, listing detail endpoints, JWT-protected creation, and owner-authorized editing and deletion.
 
-Listing editing, deletion, pagination, and search remain.
+Pagination and search remain.
 
 ## Phase 6: Frontend marketplace
 
@@ -104,7 +104,7 @@ Learn React component design, API integration, form state, responsive layout, an
 
 Wallet authentication is implemented with one-time nonce challenges, MetaMask signing, viem signature verification, JWT issuance, automatic User creation, token persistence, and protected listing creation.
 
-Network detection and logout remain.
+Network detection and logout are implemented. The frontend restores a persisted session through `/api/auth/me`, clears authentication when MetaMask accounts or chains change, and shows owner-only edit and delete controls.
 
 Never authorize from a client-supplied wallet address without verifying a signature. Never store private keys.
 

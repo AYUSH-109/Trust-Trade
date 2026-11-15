@@ -3,8 +3,10 @@ import listingImageUpload from "../middleware/listing-upload.js";
 import { requireAuth } from "../middleware/require-auth.js";
 import {
   createListing,
+  deleteListing,
   findListingById,
-  findListings
+  findListings,
+  updateListing
 } from "../services/listing-service.js";
 import {
   deleteListingImage,
@@ -12,7 +14,9 @@ import {
 } from "../services/image-upload-service.js";
 import {
   getListingData,
-  validateCreateListing
+  getListingUpdateData,
+  validateCreateListing,
+  validateUpdateListing
 } from "../validation/listing.js";
 
 const router = Router();
@@ -81,6 +85,57 @@ router.post("/", requireAuth, listingImageUpload.array("images", 5), async (requ
     }
 
     return response.status(500).json({ error: "Unable to create listing" });
+  }
+});
+
+router.patch("/:id", requireAuth, async (request, response) => {
+  const body = request.body ?? {};
+  const errors = validateUpdateListing(body);
+
+  if (Object.keys(errors).length > 0) {
+    return response.status(400).json({ errors });
+  }
+
+  try {
+    const result = await updateListing(
+      request.params.id,
+      request.auth.sub,
+      getListingUpdateData(body)
+    );
+
+    if (result.status === "not_found") {
+      return response.status(404).json({ error: "Listing not found" });
+    }
+    if (result.status === "forbidden") {
+      return response.status(403).json({ error: "You do not own this listing" });
+    }
+
+    return response.json({ data: result.listing });
+  } catch (error) {
+    console.error("Failed to update listing", error);
+    return response.status(500).json({ error: "Unable to update listing" });
+  }
+});
+
+router.delete("/:id", requireAuth, async (request, response) => {
+  try {
+    const result = await deleteListing(request.params.id, request.auth.sub);
+
+    if (result.status === "not_found") {
+      return response.status(404).json({ error: "Listing not found" });
+    }
+    if (result.status === "forbidden") {
+      return response.status(403).json({ error: "You do not own this listing" });
+    }
+
+    await Promise.all(
+      result.imagePublicIds.map((publicId) => deleteListingImage(publicId))
+    );
+
+    return response.status(204).send();
+  } catch (error) {
+    console.error("Failed to delete listing", error);
+    return response.status(500).json({ error: "Unable to delete listing" });
   }
 });
 

@@ -70,3 +70,37 @@ export async function findListingById(id) {
 
   return listing ? serializeListing(listing) : null;
 }
+
+export async function updateListing(id, sellerId, data) {
+  const listing = await prisma.listing.findUnique({
+    where: { id },
+    select: { sellerId: true }
+  });
+
+  if (!listing) return { status: "not_found" };
+  if (listing.sellerId !== sellerId) return { status: "forbidden" };
+
+  const updatedListing = await prisma.listing.update({
+    where: { id },
+    data,
+    select: listingSelection
+  });
+
+  return { status: "updated", listing: serializeListing(updatedListing) };
+}
+
+export async function deleteListing(id, sellerId) {
+  const listing = await prisma.listing.findUnique({
+    where: { id },
+    select: {
+      sellerId: true,
+      images: { select: { publicId: true } }
+    }
+  });
+
+  if (!listing) return { status: "not_found" };
+  if (listing.sellerId !== sellerId) return { status: "forbidden" };
+
+  await prisma.listing.delete({ where: { id } });
+  return { status: "deleted", imagePublicIds: listing.images.map((image) => image.publicId) };
+}

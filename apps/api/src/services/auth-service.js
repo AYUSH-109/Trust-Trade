@@ -79,3 +79,15 @@ export async function verifyChallenge({ wallet, nonce, signature }) {
 
   return { token, user };
 }
+
+export async function findUserById(id) {
+  return prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      wallet: true,
+      name: true,
+      email: true
+    }
+  });
+}
