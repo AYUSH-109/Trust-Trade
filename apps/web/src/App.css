@@ -34,8 +34,25 @@ textarea {
 }
 
 .hero {
+  position: relative;
   max-width: 680px;
   margin-bottom: 48px;
+}
+
+.wallet-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: auto;
+  padding: 10px 14px;
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.wallet-status {
+  margin-top: 16px;
+  color: var(--green);
+  font-size: 0.9rem;
 }
 
 .eyebrow {

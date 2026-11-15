@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createWalletClient, custom } from "viem";
 import "./App.css";
 
 const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
@@ -18,6 +19,8 @@ function App() {
   const [selectedListing, setSelectedListing] = useState(null);
   const [detailStatus, setDetailStatus] = useState("idle");
   const [status, setStatus] = useState({ type: "idle", message: "" });
+  const [wallet, setWallet] = useState("");
+  const [authStatus, setAuthStatus] = useState("idle");
 
   useEffect(() => {
     async function loadListings() {
@@ -89,6 +92,55 @@ function App() {
     }
   }
 
+  async function handleConnectWallet() {
+    if (!window.ethereum) {
+      setAuthStatus("MetaMask is not installed");
+      return;
+    }
+
+    setAuthStatus("Connecting...");
+
+    try {
+      const client = createWalletClient({ transport: custom(window.ethereum) });
+      const [address] = await client.requestAddresses();
+      const challengeResponse = await fetch(`${apiUrl}/api/auth/challenge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet: address })
+      });
+      const challengeResult = await challengeResponse.json();
+
+      if (!challengeResponse.ok) {
+        throw new Error(challengeResult.error ?? "Unable to start authentication");
+      }
+
+      const signature = await client.signMessage({
+        account: address,
+        message: challengeResult.data.message
+      });
+      const verifyResponse = await fetch(`${apiUrl}/api/auth/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet: address,
+          nonce: challengeResult.data.nonce,
+          signature
+        })
+      });
+      const verifyResult = await verifyResponse.json();
+
+      if (!verifyResponse.ok) {
+        throw new Error(verifyResult.error ?? "Unable to verify wallet");
+      }
+
+      setWallet(verifyResult.data.user.wallet);
+      setAuthStatus("Connected");
+    } catch (error) {
+      console.error(error);
+      setAuthStatus(error.message);
+    }
+  }
+
   async function handleListingSelect(listingId) {
     setDetailStatus("loading");
 
@@ -111,12 +163,18 @@ function App() {
   return (
     <main className="page-shell">
       <header className="hero">
+        <button className="wallet-button" type="button" onClick={handleConnectWallet}>
+          {wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "Connect MetaMask"}
+        </button>
         <p className="eyebrow">TRUST TRADE</p>
         <h1>Sell what you no longer need.</h1>
         <p className="hero-copy">
           Create a campus listing with secure image storage. Escrow payments are
           coming next.
         </p>
+        {authStatus && authStatus !== "idle" && (
+          <p className="wallet-status">{authStatus}</p>
+        )}
       </header>
 
       <section className="form-card">

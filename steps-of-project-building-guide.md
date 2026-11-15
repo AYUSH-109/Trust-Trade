@@ -102,7 +102,9 @@ Learn React component design, API integration, form state, responsive layout, an
 
 ## Phase 7: Wallet authentication
 
-Build MetaMask connection, network detection, sign-in messages, backend signature verification, and session handling.
+Wallet authentication is implemented with one-time nonce challenges, MetaMask signing, viem signature verification, JWT issuance, and automatic User creation.
+
+Network detection, protected-route middleware, token persistence, and logout remain.
 
 Never authorize from a client-supplied wallet address without verifying a signature. Never store private keys.
 
