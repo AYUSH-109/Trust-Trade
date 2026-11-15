@@ -53,6 +53,10 @@ export function getListingData(input, sellerId) {
 export function validateUpdateListing(input) {
   const errors = {};
 
+  if (Object.keys(input).length === 0) {
+    errors.form = "At least one listing field is required";
+  }
+
   if ("title" in input && !isNonEmptyString(input.title)) {
     errors.title = "Title must be a non-empty string";
   }
