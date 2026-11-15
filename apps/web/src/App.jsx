@@ -15,6 +15,8 @@ function App() {
   const [files, setFiles] = useState([]);
   const [listings, setListings] = useState([]);
   const [listingsStatus, setListingsStatus] = useState("loading");
+  const [selectedListing, setSelectedListing] = useState(null);
+  const [detailStatus, setDetailStatus] = useState("idle");
   const [status, setStatus] = useState({ type: "idle", message: "" });
 
   useEffect(() => {
@@ -84,6 +86,25 @@ function App() {
       setFiles([]);
     } catch (error) {
       setStatus({ type: "error", message: error.message });
+    }
+  }
+
+  async function handleListingSelect(listingId) {
+    setDetailStatus("loading");
+
+    try {
+      const response = await fetch(`${apiUrl}/api/listings/${listingId}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "Unable to load listing");
+      }
+
+      setSelectedListing(result.data);
+      setDetailStatus("ready");
+    } catch (error) {
+      console.error(error);
+      setDetailStatus("error");
     }
   }
 
@@ -228,7 +249,12 @@ function App() {
         {listings.length > 0 && (
           <div className="listing-grid">
             {listings.map((listing) => (
-              <article className="listing-card" key={listing.id}>
+              <button
+                className="listing-card"
+                key={listing.id}
+                type="button"
+                onClick={() => handleListingSelect(listing.id)}
+              >
                 {listing.images[0] ? (
                   <img src={listing.images[0].url} alt={listing.title} />
                 ) : (
@@ -242,11 +268,52 @@ function App() {
                   <h3>{listing.title}</h3>
                   <p>{listing.description}</p>
                 </div>
-              </article>
+              </button>
             ))}
           </div>
         )}
       </section>
+
+      {detailStatus === "loading" && (
+        <p className="muted-copy detail-status">Loading listing details...</p>
+      )}
+      {detailStatus === "error" && (
+        <p className="status-message error detail-status">
+          Unable to load listing details.
+        </p>
+      )}
+      {selectedListing && detailStatus === "ready" && (
+        <section className="detail-card">
+          <div className="detail-gallery">
+            {selectedListing.images.length > 0 ? (
+              selectedListing.images.map((image) => (
+                <img key={image.id} src={image.url} alt={selectedListing.title} />
+              ))
+            ) : (
+              <div className="image-placeholder">No image</div>
+            )}
+          </div>
+          <div className="detail-copy">
+            <button
+              className="close-detail"
+              type="button"
+              onClick={() => setSelectedListing(null)}
+            >
+              Close
+            </button>
+            <p className="eyebrow">{selectedListing.category}</p>
+            <h2>{selectedListing.title}</h2>
+            <p className="detail-price">₹{selectedListing.price}</p>
+            <p className="detail-description">{selectedListing.description}</p>
+            <p className="seller-line">
+              Listed by {selectedListing.seller.name ?? selectedListing.seller.wallet}
+            </p>
+            <button className="escrow-button" type="button" disabled>
+              Buy with escrow (coming next)
+            </button>
+          </div>
+        </section>
+      )}
     </main>
   );
 }

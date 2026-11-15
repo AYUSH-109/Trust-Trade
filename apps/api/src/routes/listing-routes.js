@@ -1,6 +1,10 @@
 import { Router } from "express";
 import listingImageUpload from "../middleware/listing-upload.js";
-import { createListing, findListings } from "../services/listing-service.js";
+import {
+  createListing,
+  findListingById,
+  findListings
+} from "../services/listing-service.js";
 import {
   deleteListingImage,
   uploadListingImage
@@ -23,6 +27,21 @@ router.get("/", async (_request, response) => {
   } catch (error) {
     console.error("Failed to fetch listings", error);
     return response.status(500).json({ error: "Unable to fetch listings" });
+  }
+});
+
+router.get("/:id", async (request, response) => {
+  try {
+    const listing = await findListingById(request.params.id);
+
+    if (!listing) {
+      return response.status(404).json({ error: "Listing not found" });
+    }
+
+    return response.json({ data: listing });
+  } catch (error) {
+    console.error("Failed to fetch listing", error);
+    return response.status(500).json({ error: "Unable to fetch listing" });
   }
 });
 

@@ -104,9 +104,19 @@ h2 {
 
 .listing-card {
   overflow: hidden;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.listing-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 30px rgba(29, 91, 66, 0.12);
 }
 
 .listing-card > img,
@@ -150,6 +160,73 @@ h2 {
   color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+.detail-status {
+  margin-top: 30px;
+}
+
+.detail-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 34px;
+  margin-top: 42px;
+  padding: clamp(22px, 4vw, 40px);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--card);
+}
+
+.detail-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detail-gallery img,
+.detail-gallery .image-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+.detail-copy {
+  position: relative;
+  padding-top: 28px;
+}
+
+.close-detail {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 6px 10px;
+  background: var(--green-light);
+  color: var(--green);
+  font-size: 0.8rem;
+}
+
+.detail-price {
+  margin: 20px 0;
+  color: var(--orange);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.detail-description {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.seller-line {
+  margin-top: 26px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.escrow-button {
+  width: 100%;
+  margin-top: 18px;
 }
 
 .section-heading {
@@ -324,6 +401,10 @@ button:disabled {
   }
 
   .listing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-card {
     grid-template-columns: 1fr;
   }
 }

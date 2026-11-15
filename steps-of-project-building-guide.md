@@ -88,13 +88,13 @@ PATCH  /api/listings/:id
 DELETE /api/listings/:id
 ```
 
-It includes request validation, Cloudinary uploads, PostgreSQL image metadata, serialized decimal prices, and a basic listing retrieval endpoint.
+It includes request validation, Cloudinary uploads, PostgreSQL image metadata, serialized decimal prices, listing retrieval, and listing detail endpoints.
 
 Listing retrieval, editing, deletion, pagination, search, and seller authorization remain.
 
 ## Phase 6: Frontend marketplace
 
-The first frontend marketplace screen is now in place. It includes a create-listing form, multiple image selection, local previews, listing retrieval, a marketplace grid, loading states, and API error/success feedback.
+The first frontend marketplace screen is now in place. It includes a create-listing form, multiple image selection, local previews, listing retrieval, a marketplace grid, listing details, loading states, and API error/success feedback.
 
 The homepage, listing grid, listing details, edit listing page, seller dashboard, and loading, empty, and error states for other pages remain.
 

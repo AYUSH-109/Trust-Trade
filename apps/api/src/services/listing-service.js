@@ -61,3 +61,12 @@ export async function findListings() {
 
   return listings.map(serializeListing);
 }
+
+export async function findListingById(id) {
+  const listing = await prisma.listing.findUnique({
+    where: { id },
+    select: listingSelection
+  });
+
+  return listing ? serializeListing(listing) : null;
+}
