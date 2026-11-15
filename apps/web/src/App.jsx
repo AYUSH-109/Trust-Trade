@@ -13,7 +13,26 @@ function App() {
     sellerId: ""
   });
   const [files, setFiles] = useState([]);
+  const [listings, setListings] = useState([]);
+  const [listingsStatus, setListingsStatus] = useState("loading");
   const [status, setStatus] = useState({ type: "idle", message: "" });
+
+  useEffect(() => {
+    async function loadListings() {
+      try {
+        const response = await fetch(`${apiUrl}/api/listings`);
+        if (!response.ok) throw new Error("Unable to load listings");
+        const result = await response.json();
+        setListings(result.data);
+        setListingsStatus("ready");
+      } catch (error) {
+        console.error(error);
+        setListingsStatus("error");
+      }
+    }
+
+    loadListings();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -60,6 +79,7 @@ function App() {
         type: "success",
         message: `Listing created with ${result.data.images.length} image(s).`
       });
+      setListings((current) => [result.data, ...current]);
       setForm({ title: "", description: "", price: "", category: "", sellerId: "" });
       setFiles([]);
     } catch (error) {
@@ -187,6 +207,45 @@ function App() {
             {status.type === "loading" ? "Creating..." : "Publish listing"}
           </button>
         </form>
+      </section>
+
+      <section className="marketplace-section">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">CAMPUS MARKETPLACE</p>
+            <h2>Recently listed</h2>
+          </div>
+          <span className="listing-count">{listings.length} items</span>
+        </div>
+
+        {listingsStatus === "loading" && <p className="muted-copy">Loading listings...</p>}
+        {listingsStatus === "error" && (
+          <p className="status-message error">Unable to load listings.</p>
+        )}
+        {listingsStatus === "ready" && listings.length === 0 && (
+          <p className="muted-copy">No listings yet. Create the first one above.</p>
+        )}
+        {listings.length > 0 && (
+          <div className="listing-grid">
+            {listings.map((listing) => (
+              <article className="listing-card" key={listing.id}>
+                {listing.images[0] ? (
+                  <img src={listing.images[0].url} alt={listing.title} />
+                ) : (
+                  <div className="image-placeholder">No image</div>
+                )}
+                <div className="listing-card-content">
+                  <div className="listing-card-topline">
+                    <span>{listing.category}</span>
+                    <strong>₹{listing.price}</strong>
+                  </div>
+                  <h3>{listing.title}</h3>
+                  <p>{listing.description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );

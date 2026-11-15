@@ -52,3 +52,12 @@ export async function createListing(data, images = []) {
 
   return serializeListing(listing);
 }
+
+export async function findListings() {
+  const listings = await prisma.listing.findMany({
+    orderBy: { createdAt: "desc" },
+    select: listingSelection
+  });
+
+  return listings.map(serializeListing);
+}

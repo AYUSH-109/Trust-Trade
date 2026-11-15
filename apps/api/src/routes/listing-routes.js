@@ -1,6 +1,6 @@
 import { Router } from "express";
 import listingImageUpload from "../middleware/listing-upload.js";
-import { createListing } from "../services/listing-service.js";
+import { createListing, findListings } from "../services/listing-service.js";
 import {
   deleteListingImage,
   uploadListingImage
@@ -15,6 +15,16 @@ const router = Router();
 function hasPrismaCode(error, code) {
   return typeof error === "object" && error !== null && "code" in error && error.code === code;
 }
+
+router.get("/", async (_request, response) => {
+  try {
+    const listings = await findListings();
+    return response.json({ data: listings });
+  } catch (error) {
+    console.error("Failed to fetch listings", error);
+    return response.status(500).json({ error: "Unable to fetch listings" });
+  }
+});
 
 router.post("/", listingImageUpload.array("images", 5), async (request, response) => {
   const body = request.body ?? {};
