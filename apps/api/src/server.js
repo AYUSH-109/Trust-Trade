@@ -1,6 +1,7 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
+import { prisma } from "database";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -13,6 +14,24 @@ app.get("/health", (_request, response) => {
     status: "ok",
     service: "trust-trade-api"
   });
+});
+
+app.get("/health/database", async (_request, response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+
+    response.json({
+      status: "ok",
+      service: "trust-trade-database"
+    });
+  } catch (error) {
+    console.error("Database health check failed", error);
+
+    response.status(503).json({
+      status: "error",
+      service: "trust-trade-database"
+    });
+  }
 });
 
 app.listen(port, () => {
