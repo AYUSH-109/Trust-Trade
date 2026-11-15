@@ -78,7 +78,7 @@ Learn relational modeling, foreign keys, migrations, Prisma queries, and transac
 
 ## Phase 5: Listing API
 
-Build:
+The listing creation endpoint now supports multipart image uploads:
 
 ```text
 POST   /api/listings
@@ -88,11 +88,15 @@ PATCH  /api/listings/:id
 DELETE /api/listings/:id
 ```
 
-Add request validation, pagination, search, category and price filters, and seller authorization.
+It includes request validation, Cloudinary uploads, PostgreSQL image metadata, and serialized decimal prices.
+
+Listing retrieval, editing, deletion, pagination, search, and seller authorization remain.
 
 ## Phase 6: Frontend marketplace
 
-Build the homepage, listing grid, listing details, create and edit listing pages, seller dashboard, and loading, empty, and error states.
+The first frontend marketplace screen is now in place. It includes a create-listing form, multiple image selection, local previews, loading states, and API error/success feedback.
+
+The homepage, listing grid, listing details, edit listing page, seller dashboard, and loading, empty, and error states for other pages remain.
 
 Learn React component design, API integration, form state, responsive layout, and Tailwind CSS.
 
