@@ -55,12 +55,13 @@ Invoke-RestMethod http://localhost:3000/health
 - Prisma Client has been generated.
 - The initial migration has been created and applied.
 - The migration creates the enum, tables, indexes, and listing-to-user foreign key.
+- Express imports the shared Prisma client.
+- The `/health/database` endpoint verifies a live PostgreSQL query.
 
 ### Next tasks
 
 1. Verify tables in PostgreSQL.
-2. Add a reusable Prisma client module.
-3. Connect Prisma to Express.
+2. Build the listing service and API routes.
 
 ### Verification commands
 
