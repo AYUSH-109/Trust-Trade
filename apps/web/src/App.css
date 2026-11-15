@@ -66,6 +66,20 @@ textarea {
   font-size: 0.8rem;
 }
 
+.network-status,
+.network-warning {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+}
+
+.network-status {
+  color: var(--green);
+}
+
+.network-warning {
+  color: #a33a2f;
+}
+
 .eyebrow {
   margin: 0 0 14px;
   color: var(--green);

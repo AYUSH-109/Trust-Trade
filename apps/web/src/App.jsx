@@ -4,6 +4,8 @@ import "./App.css";
 
 const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 const maximumImages = 5;
+const targetChainId = BigInt(import.meta.env.VITE_CHAIN_ID ?? "11155111");
+const targetChainName = import.meta.env.VITE_CHAIN_NAME ?? "Sepolia";
 
 function App() {
   const [form, setForm] = useState({
@@ -20,6 +22,8 @@ function App() {
   const [status, setStatus] = useState({ type: "idle", message: "" });
   const [wallet, setWallet] = useState("");
   const [authStatus, setAuthStatus] = useState("idle");
+  const [chainId, setChainId] = useState("");
+  const [networkStatus, setNetworkStatus] = useState("idle");
   const [token, setToken] = useState(() => localStorage.getItem("trust_trade_token") ?? "");
   const [userId, setUserId] = useState("");
   const [editMode, setEditMode] = useState(false);
@@ -57,7 +61,15 @@ function App() {
     const handleAccountsChanged = () => {
       handleLogout("Wallet changed. Connect again.");
     };
-    const handleChainChanged = () => {
+    const handleChainChanged = (nextChainId) => {
+      setChainId(nextChainId);
+      if (BigInt(nextChainId) !== targetChainId) {
+        setNetworkStatus("unsupported");
+        handleLogout(`Unsupported network. Switch MetaMask to ${targetChainName}.`);
+        return;
+      }
+
+      setNetworkStatus("supported");
       handleLogout("Network changed. Connect again.");
     };
 
@@ -108,6 +120,20 @@ function App() {
     );
   }
 
+  async function ensureSupportedNetwork() {
+    const currentChainId = await window.ethereum.request({ method: "eth_chainId" });
+    setChainId(currentChainId);
+
+    if (BigInt(currentChainId) !== targetChainId) {
+      setNetworkStatus("unsupported");
+      setAuthStatus(`Switch MetaMask to ${targetChainName} before connecting.`);
+      return false;
+    }
+
+    setNetworkStatus("supported");
+    return true;
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setStatus({ type: "loading", message: "Creating listing..." });
@@ -150,6 +176,8 @@ function App() {
     setAuthStatus("Connecting...");
 
     try {
+      if (!(await ensureSupportedNetwork())) return;
+
       const client = createWalletClient({ transport: custom(window.ethereum) });
       const [address] = await client.requestAddresses();
       const challengeResponse = await fetch(`${apiUrl}/api/auth/challenge`, {
@@ -199,6 +227,8 @@ function App() {
     setToken("");
     setWallet("");
     setUserId("");
+    setChainId("");
+    setNetworkStatus("idle");
     setAuthStatus(message);
     setEditMode(false);
   }
@@ -293,6 +323,14 @@ function App() {
           <button className="logout-button" type="button" onClick={() => handleLogout()}>
             Logout
           </button>
+        )}
+        {networkStatus === "unsupported" && (
+          <p className="network-warning">
+            Unsupported network. Switch MetaMask to {targetChainName}.
+          </p>
+        )}
+        {networkStatus === "supported" && chainId && (
+          <p className="network-status">Network: {targetChainName}</p>
         )}
         <p className="eyebrow">TRUST TRADE</p>
         <h1>Sell what you no longer need.</h1>

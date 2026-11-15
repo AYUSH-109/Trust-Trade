@@ -7,3 +7,5 @@ build/
 coverage/
 .prisma/
 *.log
+contracts/artifacts/
+contracts/cache/

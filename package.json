@@ -5,11 +5,14 @@
   "description": "A decentralized campus marketplace with blockchain escrow",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "contracts"
   ],
   "scripts": {
     "dev": "npm run dev --workspaces",
     "lint": "npm run lint --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "contracts:compile": "npm run compile --workspace contracts",
+    "contracts:test": "npm run test --workspace contracts"
   }
 }

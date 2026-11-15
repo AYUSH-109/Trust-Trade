@@ -110,15 +110,15 @@ Never authorize from a client-supplied wallet address without verifying a signat
 
 ## Phase 8: Smart contract
 
-Build and test order creation, buyer funding, shipment updates, delivery confirmation, release, refunds, disputes, admin resolution, and timeouts.
+The first escrow contract foundation is implemented in `contracts/`. `TrustTradeEscrow` supports exact-value deposits, seller shipment updates, buyer delivery confirmation, pre-shipment refunds, deadline refunds, disputes, admin resolution, pull withdrawals, events, and reentrancy protection.
 
-Add access control, reentrancy protection, events, state validation, and exact payment validation.
+Hardhat tests cover the escrow state machine, authorization, refunds, dispute resolution, timeout handling, and withdrawal balances. Sepolia deployment is configured through `contracts/.env`.
 
 ## Phase 9: Blockchain integration
 
 Build contract deployment scripts, ABI handling, frontend contract calls, receipt handling, transaction records, and event synchronization.
 
-The backend must verify a confirmed receipt before marking an order as funded or released.
+The frontend now requires the configured chain (Sepolia by default) before wallet authentication and clears the session when the account or network changes. Contract calls and backend receipt synchronization remain.
 
 ## Phase 10: Orders and communication
 
