@@ -72,13 +72,13 @@ npm run migrate --workspace packages/database -- --name init
 
 ## Phase 4: Database service layer
 
-Build a Prisma client singleton, user and listing services, validation, and database error handling.
+The Prisma client singleton, listing service, validation, and database error handling are now in place.
 
 Learn relational modeling, foreign keys, migrations, Prisma queries, and transactions.
 
 ## Phase 5: Listing API
 
-Build:
+The first listing API implementation is now in place:
 
 ```text
 POST   /api/listings
@@ -88,7 +88,9 @@ PATCH  /api/listings/:id
 DELETE /api/listings/:id
 ```
 
-Add request validation, pagination, search, category and price filters, and seller authorization.
+It includes request validation, pagination, search, category and status filters, serialized decimal prices, and Prisma-backed CRUD operations.
+
+Seller authorization will be added after wallet authentication.
 
 ## Phase 6: Frontend marketplace
 
