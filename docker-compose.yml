@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16
+    container_name: trust-trade-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trust_trade
+      POSTGRES_PASSWORD: trust_trade_dev
+      POSTGRES_DB: trust_trade
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trust_trade -d trust_trade"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
