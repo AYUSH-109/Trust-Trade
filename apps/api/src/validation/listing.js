@@ -30,14 +30,10 @@ export function validateCreateListing(input) {
     errors.category = "Category is required";
   }
 
-  if (!isNonEmptyString(input.sellerId)) {
-    errors.sellerId = "Seller ID is required";
-  }
-
   return errors;
 }
 
-export function getListingData(input, { includeSellerId = false } = {}) {
+export function getListingData(input, sellerId) {
   const data = {};
   const fields = ["title", "description", "category"];
 
@@ -49,9 +45,7 @@ export function getListingData(input, { includeSellerId = false } = {}) {
 
   data.price = String(input.price);
 
-  if (includeSellerId) {
-    data.sellerId = input.sellerId.trim();
-  }
+  data.sellerId = sellerId;
 
   return data;
 }

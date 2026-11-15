@@ -10,8 +10,7 @@ function App() {
     title: "",
     description: "",
     price: "",
-    category: "",
-    sellerId: ""
+    category: ""
   });
   const [files, setFiles] = useState([]);
   const [listings, setListings] = useState([]);
@@ -21,6 +20,7 @@ function App() {
   const [status, setStatus] = useState({ type: "idle", message: "" });
   const [wallet, setWallet] = useState("");
   const [authStatus, setAuthStatus] = useState("idle");
+  const [token, setToken] = useState(() => localStorage.getItem("trust_trade_token") ?? "");
 
   useEffect(() => {
     async function loadListings() {
@@ -71,6 +71,7 @@ function App() {
     try {
       const response = await fetch(`${apiUrl}/api/listings`, {
         method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body
       });
       const result = await response.json();
@@ -85,7 +86,7 @@ function App() {
         message: `Listing created with ${result.data.images.length} image(s).`
       });
       setListings((current) => [result.data, ...current]);
-      setForm({ title: "", description: "", price: "", category: "", sellerId: "" });
+      setForm({ title: "", description: "", price: "", category: "" });
       setFiles([]);
     } catch (error) {
       setStatus({ type: "error", message: error.message });
@@ -134,6 +135,8 @@ function App() {
       }
 
       setWallet(verifyResult.data.user.wallet);
+      setToken(verifyResult.data.token);
+      localStorage.setItem("trust_trade_token", verifyResult.data.token);
       setAuthStatus("Connected");
     } catch (error) {
       console.error(error);
@@ -242,16 +245,6 @@ function App() {
               </div>
             </label>
 
-            <label>
-              Seller ID <span className="muted">(temporary)</span>
-              <input
-                name="sellerId"
-                value={form.sellerId}
-                onChange={handleChange}
-                placeholder="Paste an existing User ID"
-                required
-              />
-            </label>
           </div>
 
           <label className="upload-field">
@@ -282,9 +275,12 @@ function App() {
             </p>
           )}
 
-          <button type="submit" disabled={status.type === "loading"}>
+          <button type="submit" disabled={status.type === "loading" || !token}>
             {status.type === "loading" ? "Creating..." : "Publish listing"}
           </button>
+          {!token && (
+            <p className="muted-copy">Connect MetaMask before publishing a listing.</p>
+          )}
         </form>
       </section>
 

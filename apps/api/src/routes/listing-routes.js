@@ -1,5 +1,6 @@
 import { Router } from "express";
 import listingImageUpload from "../middleware/listing-upload.js";
+import { requireAuth } from "../middleware/require-auth.js";
 import {
   createListing,
   findListingById,
@@ -45,7 +46,7 @@ router.get("/:id", async (request, response) => {
   }
 });
 
-router.post("/", listingImageUpload.array("images", 5), async (request, response) => {
+router.post("/", requireAuth, listingImageUpload.array("images", 5), async (request, response) => {
   const body = request.body ?? {};
   const errors = validateCreateListing(body);
 
@@ -61,7 +62,7 @@ router.post("/", listingImageUpload.array("images", 5), async (request, response
     }
 
     const listing = await createListing(
-      getListingData(body, { includeSellerId: true }),
+      getListingData(body, request.auth.sub),
       uploadedImages
     );
 
