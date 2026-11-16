@@ -556,7 +556,10 @@ function App() {
     setStatus({ type: "loading", message: "Confirm the escrow transaction in MetaMask..." });
 
     try {
-      if (!(await ensureSupportedNetwork())) return;
+      if (!(await ensureSupportedNetwork())) {
+        setStatus({ type: "error", message: `Switch MetaMask to ${targetChainName} before funding escrow.` });
+        return;
+      }
 
       const { publicClient, walletClient } = getEscrowClients(
         window.ethereum,
@@ -613,7 +616,35 @@ function App() {
       });
     } catch (error) {
       console.error(error);
-      setStatus({ type: "error", message: error.shortMessage ?? error.message });
+      setStatus({ type: "error", message: getWalletErrorMessage(error) });
+    }
+  }
+
+  async function handleFundOrder(order) {
+    setStatus({ type: "loading", message: "Preparing escrow details..." });
+    setSelectedOrderId(order.id);
+    setSelectedOrderAmount(order.offerAmount);
+    setDetailStatus("loading");
+    navigateTo("marketplace");
+
+    try {
+      const response = await fetch(`${apiUrl}/api/listings/${order.listingId}`);
+      const result = await readApiResponse(response, "Unable to load the order listing");
+      setSelectedListing(result.data);
+      setChatRecipientId(result.data.seller.id);
+      setEditForm({
+        title: result.data.title,
+        description: result.data.description,
+        price: result.data.price,
+        category: result.data.category
+      });
+      await loadEthQuote(order.listingId, order.offerAmount);
+      setDetailStatus("ready");
+      setStatus({ type: "idle", message: "" });
+    } catch (error) {
+      console.error(error);
+      setDetailStatus("error");
+      setStatus({ type: "error", message: error.message });
     }
   }
 
@@ -1299,7 +1330,7 @@ function App() {
               return <article className="offer-row order-row" key={order.id}>
                 <div><strong>{order.listing.title}</strong><p>{isBuyer ? "Buying from" : "Selling to"} {isBuyer ? order.seller.wallet : order.buyer.wallet}</p></div>
                 <b>{order.status.replaceAll("_", " ")}</b>
-                {order.status === "AWAITING_ESCROW" && isBuyer && <button type="button" onClick={() => { setSelectedOrderId(order.id); setSelectedOrderAmount(order.offerAmount ?? order.listing.price); setSelectedListing({ id: order.listingId, title: order.listing.title, price: order.listing.price, seller: order.seller }); loadEthQuote(order.listingId, order.offerAmount ?? order.listing.price); navigateTo("marketplace"); }}>Fund escrow</button>}
+                {order.status === "AWAITING_ESCROW" && isBuyer && <button type="button" onClick={() => handleFundOrder(order)}>Fund escrow</button>}
                 {order.status === "FUNDED" && !isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "SHIPPED")}>Mark shipped</button>}
                 {order.status === "SHIPPED" && isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "DELIVERED")}>Confirm delivery</button>}
                 {["FUNDED", "SHIPPED"].includes(order.status) && isBuyer && <button type="button" className="secondary-button" onClick={() => handleOrderStatus(order.id, "DISPUTED")}>Raise dispute</button>}
