@@ -57,6 +57,9 @@ router.patch("/:id", async (request, response) => {
     if (result.status === "invalid_state") return response.status(409).json({ error: "Offer is no longer pending" });
     return response.json({ data: result.offer });
   } catch (error) {
+    if (error.message === "Listing is no longer available" || error.message === "Listing already has an order") {
+      return response.status(409).json({ error: error.message });
+    }
     console.error("Failed to update offer", error);
     return response.status(500).json({ error: "Unable to update offer" });
   }

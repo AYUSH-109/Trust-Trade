@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth-routes.js";
 import listingRoutes from "./routes/listing-routes.js";
 import marketRoutes from "./routes/market-routes.js";
 import offerRoutes from "./routes/offer-routes.js";
+import orderRoutes from "./routes/order-routes.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -16,6 +17,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/listings", listingRoutes);
 app.use("/api/market", marketRoutes);
 app.use("/api/offers", offerRoutes);
+app.use("/api/orders", orderRoutes);
 
 app.get("/health", (_request, response) => {
   response.json({

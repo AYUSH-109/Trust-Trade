@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createWalletClient, custom } from "viem";
+import { createWalletClient, custom, parseEventLogs } from "viem";
 import {
   escrowAbi,
   escrowContractAddress,
@@ -44,6 +44,8 @@ function App() {
     category: ""
   });
   const [escrowAmount, setEscrowAmount] = useState("");
+  const [selectedOrderId, setSelectedOrderId] = useState("");
+  const [selectedOrderAmount, setSelectedOrderAmount] = useState("");
   const [ethQuote, setEthQuote] = useState(null);
   const [quoteStatus, setQuoteStatus] = useState("idle");
   const [screen, setScreen] = useState("landing");
@@ -51,6 +53,7 @@ function App() {
   const [offerAmount, setOfferAmount] = useState("");
   const [offerMessage, setOfferMessage] = useState("");
   const [offers, setOffers] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [chatMessage, setChatMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [chatRecipientId, setChatRecipientId] = useState("");
@@ -73,6 +76,22 @@ function App() {
         console.error(error);
         handleLogout();
       });
+
+    return undefined;
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+
+    fetch(`${apiUrl}/api/orders`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? "Unable to load orders");
+        setOrders(result.data);
+      })
+      .catch((error) => console.error(error));
 
     return undefined;
   }, [token]);
@@ -300,6 +319,8 @@ function App() {
       });
       setEditMode(false);
       setEscrowAmount("");
+      setSelectedOrderId("");
+      setSelectedOrderAmount("");
       await loadEthQuote(result.data.id, result.data.price);
       setDetailStatus("ready");
     } catch (error) {
@@ -419,6 +440,8 @@ function App() {
         targetChainId
       );
       const [account] = await walletClient.requestAddresses();
+      const paymentPrice = selectedOrderAmount || selectedListing.price;
+      const expectedWei = calculateRequiredWei(paymentPrice, ethQuote.ratePaise);
       const hash = await walletClient.writeContract({
         address: escrowContractAddress,
         abi: escrowAbi,
@@ -428,13 +451,39 @@ function App() {
           selectedListing.seller.wallet,
           getListingContractId(selectedListing.id),
           escrowDeliveryWindow,
-          calculateRequiredWei(selectedListing.price, ethQuote.ratePaise)
+          expectedWei
         ],
-        value: parseEther(escrowAmount)
+        value: parseEther(formatEther(expectedWei))
       });
 
       setStatus({ type: "loading", message: "Waiting for blockchain confirmation..." });
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (selectedOrderId) {
+        const events = parseEventLogs({
+          abi: escrowAbi,
+          logs: receipt.logs,
+          eventName: "EscrowCreated"
+        });
+        const escrowId = events[0]?.args?.escrowId;
+        if (escrowId === undefined) throw new Error("Escrow confirmation did not include an escrow ID");
+        const orderResponse = await fetch(`${apiUrl}/api/orders/${selectedOrderId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            status: "FUNDED",
+            escrowId: escrowId.toString(),
+            fundingTxHash: receipt.transactionHash
+          })
+        });
+        const orderResult = await orderResponse.json();
+        if (!orderResponse.ok) throw new Error(orderResult.error ?? "Unable to link escrow to order");
+        setOrders((current) => current.map((order) => order.id === selectedOrderId ? orderResult.data : order));
+        setSelectedOrderId("");
+        setSelectedOrderAmount("");
+      }
       setStatus({
         type: "success",
         message: `Escrow funded. Transaction: ${receipt.transactionHash}`
@@ -518,10 +567,55 @@ function App() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Unable to update offer");
       setOffers((current) =>
-        current.map((offer) => (offer.id === offerId ? result.data : offer))
+        current.map((offer) => {
+          if (offer.id === offerId) return result.data;
+          if (nextStatus === "ACCEPTED" && offer.listingId === result.data.listingId && offer.status === "PENDING") {
+            return { ...offer, status: "REJECTED" };
+          }
+          return offer;
+        })
       );
     } catch (error) {
       setStatus({ type: "error", message: error.message });
+    }
+
+  }
+
+  async function handleCreateOrder(offerId) {
+      try {
+        const response = await fetch(`${apiUrl}/api/orders`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ offerId })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? "Unable to start order");
+        setOrders((current) => [result.data, ...current.filter((order) => order.id !== result.data.id)]);
+        setStatus({ type: "success", message: "Order started. Fund it through escrow to continue." });
+        navigateTo("orders");
+      } catch (error) {
+        setStatus({ type: "error", message: error.message });
+      }
+    }
+
+  async function handleOrderStatus(orderId, nextStatus) {
+      try {
+        const response = await fetch(`${apiUrl}/api/orders/${orderId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: nextStatus })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? "Unable to update order");
+        setOrders((current) => current.map((order) => order.id === orderId ? result.data : order));
+      } catch (error) {
+        setStatus({ type: "error", message: error.message });
     }
   }
 
@@ -608,6 +702,7 @@ function App() {
         <nav className="main-nav" aria-label="Main navigation">
           <button className={screen === "marketplace" ? "nav-active" : ""} type="button" onClick={() => navigateTo("marketplace")}>Marketplace</button>
           <button className={screen === "offers" ? "nav-active" : ""} type="button" onClick={() => navigateTo("offers")}>Offers <span className="nav-count">{offers.length}</span></button>
+          <button className={screen === "orders" ? "nav-active" : ""} type="button" onClick={() => navigateTo("orders")}>Orders <span className="nav-count">{orders.length}</span></button>
           <button className={screen === "chat" ? "nav-active" : ""} type="button" onClick={() => navigateTo("chat")}>Chat</button>
         </nav>
         <div className="profile-wrap">
@@ -621,6 +716,7 @@ function App() {
               <button type="button" onClick={() => navigateTo("create")}>＋ Create listing</button>
               <button type="button" onClick={() => navigateTo("my-listings")}>▦ My listings</button>
               <button type="button" onClick={() => navigateTo("offers")}>◌ Available offers</button>
+              <button type="button" onClick={() => navigateTo("orders")}>▣ Orders</button>
               <button type="button" onClick={() => navigateTo("chat")}>◍ Chat with clients</button>
               <button type="button" className="menu-logout" onClick={() => handleLogout()}>Log out</button>
             </div>
@@ -976,7 +1072,27 @@ function App() {
           <p className="eyebrow">NEGOTIATE FAIRLY</p>
           <h1>Available offers</h1>
           {offers.length === 0 ? <p className="muted-copy">Offers from buyers will appear here as they bargain with you.</p> : (
-            <div className="offer-list">{offers.map((offer) => <article className="offer-row" key={offer.id}><div><strong>{offer.listing.title}</strong><p>{offer.message || "No note attached"}</p></div><b>₹{offer.amount}</b><span>{offer.status}</span>{offer.sellerId === userId && offer.status === "PENDING" && <><button type="button" onClick={() => handleOfferStatus(offer.id, "ACCEPTED")}>Accept</button><button type="button" className="secondary-button" onClick={() => handleOfferStatus(offer.id, "REJECTED")}>Decline</button></>}<button type="button" onClick={() => { setSelectedListing({ id: offer.listingId, title: offer.listing.title, seller: offer.seller }); setChatRecipientId(offer.buyerId); navigateTo("chat"); }}>Chat</button></article>)}</div>
+            <div className="offer-list">{offers.map((offer) => <article className="offer-row" key={offer.id}><div><strong>{offer.listing.title}</strong><p>{offer.message || "No note attached"}</p></div><b>₹{offer.amount}</b><span>{offer.status}</span>{offer.sellerId === userId && offer.status === "PENDING" && <><button type="button" onClick={() => handleOfferStatus(offer.id, "ACCEPTED")}>Accept</button><button type="button" className="secondary-button" onClick={() => handleOfferStatus(offer.id, "REJECTED")}>Decline</button></>}{offer.buyerId === userId && offer.status === "ACCEPTED" && !orders.some((order) => order.offerId === offer.id) && <button type="button" onClick={() => handleCreateOrder(offer.id)}>Start order</button>}<button type="button" onClick={() => { setSelectedListing({ id: offer.listingId, title: offer.listing.title, seller: offer.seller }); setChatRecipientId(offer.buyerId); navigateTo("chat"); }}>Chat</button></article>)}</div>
+          )}
+        </section>
+      )}
+
+      {screen === "orders" && (
+        <section className="workspace-card">
+          <p className="eyebrow">ESCROW WORKSPACE</p>
+          <h1>Your orders</h1>
+          {orders.length === 0 ? <p className="muted-copy">Accepted offers become orders here.</p> : (
+            <div className="offer-list">{orders.map((order) => {
+              const isBuyer = order.buyerId === userId;
+              return <article className="offer-row order-row" key={order.id}>
+                <div><strong>{order.listing.title}</strong><p>{isBuyer ? "Buying from" : "Selling to"} {isBuyer ? order.seller.wallet : order.buyer.wallet}</p></div>
+                <b>{order.status.replaceAll("_", " ")}</b>
+                {order.status === "AWAITING_ESCROW" && isBuyer && <button type="button" onClick={() => { setSelectedOrderId(order.id); setSelectedOrderAmount(order.offerAmount ?? order.listing.price); setSelectedListing({ id: order.listingId, title: order.listing.title, price: order.listing.price, seller: order.seller }); loadEthQuote(order.listingId, order.offerAmount ?? order.listing.price); navigateTo("marketplace"); }}>Fund escrow</button>}
+                {order.status === "FUNDED" && !isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "SHIPPED")}>Mark shipped</button>}
+                {order.status === "SHIPPED" && isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "DELIVERED")}>Confirm delivery</button>}
+                {["FUNDED", "SHIPPED"].includes(order.status) && isBuyer && <button type="button" className="secondary-button" onClick={() => handleOrderStatus(order.id, "DISPUTED")}>Raise dispute</button>}
+              </article>;
+            })}</div>
           )}
         </section>
       )}

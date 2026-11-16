@@ -20,6 +20,16 @@ enum OfferStatus {
   WITHDRAWN
 }
 
+enum OrderStatus {
+  AWAITING_ESCROW
+  FUNDED
+  SHIPPED
+  DELIVERED
+  REFUNDED
+  DISPUTED
+  RELEASED
+}
+
 model User {
   id        String    @id @default(uuid())
   wallet    String    @unique
@@ -34,6 +44,8 @@ model User {
   sentMessages Message[]
   buyerConversations Conversation[] @relation("ConversationBuyer")
   sellerConversations Conversation[] @relation("ConversationSeller")
+  buyerOrders Order[] @relation("OrderBuyer")
+  sellerOrders Order[] @relation("OrderSeller")
 }
 
 model Listing {
@@ -48,6 +60,7 @@ model Listing {
   images      ListingImage[]
   offers      Offer[]
   conversations Conversation[]
+  orders      Order[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -69,6 +82,30 @@ model Offer {
   seller    User        @relation("OfferSeller", fields: [sellerId], references: [id], onDelete: Cascade)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+  order     Order?
+
+  @@index([buyerId, status])
+  @@index([sellerId, status])
+  @@index([listingId, createdAt])
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  status          OrderStatus @default(AWAITING_ESCROW)
+  offerId         String      @unique
+  offer           Offer       @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  listingId       String
+  listing         Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyerId         String
+  buyer           User        @relation("OrderBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  sellerId        String
+  seller          User        @relation("OrderSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  escrowId        String?
+  fundingTxHash   String?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   @@index([buyerId, status])
   @@index([sellerId, status])

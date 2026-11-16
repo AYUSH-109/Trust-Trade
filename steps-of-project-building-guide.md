@@ -124,7 +124,7 @@ The frontend now requires the configured chain (Sepolia by default) before walle
 
 Offers and listing conversations are now persisted in PostgreSQL. Authenticated users can create offers, sellers can accept or reject pending offers, and listing-specific messages are stored through protected API routes.
 
-Order creation, timelines, shipping status, delivery confirmation, refunds, and dispute evidence remain.
+Accepted offers now become persistent orders. Buyers start an order and fund its escrow, sellers mark the item shipped, and buyers confirm delivery or raise a dispute. The API validates participants and every transition, while the Orders workspace stores the confirmed escrow ID and funding transaction hash. On-chain refund and dispute resolution remain the next synchronization step.
 
 ## Phase 11: Testing
 

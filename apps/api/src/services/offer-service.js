@@ -54,10 +54,34 @@ export async function updateOfferStatus(id, userId, status) {
   if (offer.sellerId !== userId) return { status: "forbidden" };
   if (offer.status !== "PENDING") return { status: "invalid_state" };
 
-  const updated = await prisma.offer.update({
-    where: { id },
-    data: { status },
-    select: offerSelection
+  const updated = await prisma.$transaction(async (transaction) => {
+    const listing = await transaction.listing.findUnique({
+      where: { id: offer.listingId },
+      select: { status: true }
+    });
+    if (!listing || listing.status !== "ACTIVE") throw new Error("Listing is no longer available");
+
+    const existingOrder = await transaction.order.findFirst({
+      where: { listingId: offer.listingId }
+    });
+    if (existingOrder) throw new Error("Listing already has an order");
+
+    const accepted = await transaction.offer.update({
+      where: { id },
+      data: { status },
+      select: offerSelection
+    });
+    if (status === "ACCEPTED") {
+      await transaction.offer.updateMany({
+        where: {
+          listingId: offer.listingId,
+          id: { not: id },
+          status: "PENDING"
+        },
+        data: { status: "REJECTED" }
+      });
+    }
+    return accepted;
   });
   return { status: "updated", offer: serializeOffer(updated) };
 }
