@@ -17,6 +17,30 @@ const maximumImages = 5;
 const targetChainId = BigInt(import.meta.env.VITE_CHAIN_ID ?? "11155111");
 const targetChainName = import.meta.env.VITE_CHAIN_NAME ?? "Sepolia";
 
+function getWalletErrorMessage(error) {
+  if (error?.code === 4001 || error?.name === "UserRejectedRequestError") {
+    return "Signature request was cancelled in MetaMask.";
+  }
+  if (error?.code === -32002) {
+    return "MetaMask already has a request open. Open the extension and finish it first.";
+  }
+  if (error?.name === "ConnectorNotFoundError") {
+    return "MetaMask is not available in this browser.";
+  }
+  return error?.shortMessage ?? error?.message ?? "Wallet sign-in failed.";
+}
+
+async function readApiResponse(response, fallbackMessage) {
+  const contentType = response.headers.get("content-type") ?? "";
+  const result = contentType.includes("application/json")
+    ? await response.json()
+    : { error: await response.text() };
+  if (!response.ok) {
+    throw new Error(result.error ?? fallbackMessage);
+  }
+  return result;
+}
+
 function App() {
   const [form, setForm] = useState({
     title: "",
@@ -191,6 +215,12 @@ function App() {
   }
 
   async function ensureSupportedNetwork() {
+    if (!window.ethereum) {
+      setNetworkStatus("unsupported");
+      setAuthStatus("MetaMask is not installed.");
+      return false;
+    }
+
     const currentChainId = await window.ethereum.request({ method: "eth_chainId" });
     setChainId(currentChainId);
 
@@ -248,17 +278,28 @@ function App() {
     try {
       if (!(await ensureSupportedNetwork())) return;
 
-      const client = createWalletClient({ transport: custom(window.ethereum) });
-      const [address] = await client.requestAddresses();
+      const client = createWalletClient({
+        chain: {
+          id: Number(targetChainId),
+          name: targetChainName,
+          nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
+          rpcUrls: { default: { http: [window.location.origin] } }
+        },
+        transport: custom(window.ethereum)
+      });
+      const addresses = await client.requestAddresses();
+      const address = addresses[0];
+      if (!address) {
+        throw new Error("MetaMask did not return an account. Unlock the wallet and try again.");
+      }
       const challengeResponse = await fetch(`${apiUrl}/api/auth/challenge`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ wallet: address })
       });
-      const challengeResult = await challengeResponse.json();
-
-      if (!challengeResponse.ok) {
-        throw new Error(challengeResult.error ?? "Unable to start authentication");
+      const challengeResult = await readApiResponse(challengeResponse, "Unable to start authentication");
+      if (!challengeResult.data?.message || !challengeResult.data?.nonce) {
+        throw new Error("The server returned an invalid sign-in challenge.");
       }
 
       const signature = await client.signMessage({
@@ -274,10 +315,9 @@ function App() {
           signature
         })
       });
-      const verifyResult = await verifyResponse.json();
-
-      if (!verifyResponse.ok) {
-        throw new Error(verifyResult.error ?? "Unable to verify wallet");
+      const verifyResult = await readApiResponse(verifyResponse, "Unable to verify wallet");
+      if (!verifyResult.data?.token || !verifyResult.data?.user?.id) {
+        throw new Error("The server returned an invalid sign-in response.");
       }
 
       setWallet(verifyResult.data.user.wallet);
@@ -288,7 +328,7 @@ function App() {
       setScreen("marketplace");
     } catch (error) {
       console.error(error);
-      setAuthStatus(error.message);
+      setAuthStatus(getWalletErrorMessage(error));
     }
 
   }
