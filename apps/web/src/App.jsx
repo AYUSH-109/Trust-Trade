@@ -561,8 +561,9 @@ function App() {
         </div>
       </header>
       <div className="page-shell">
-      {screen === "marketplace" && (
+      {(screen === "marketplace" || screen === "create") && (
       <>
+      {screen === "marketplace" && (
       <header className="hero">
         <button className="wallet-button" type="button" onClick={handleConnectWallet}>
           {wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "Connect MetaMask"}
@@ -590,7 +591,9 @@ function App() {
           <p className="wallet-status">{authStatus}</p>
         )}
       </header>
+      )}
 
+      {screen === "create" && (
       <section className="form-card">
         <div className="section-heading">
           <div>
@@ -694,7 +697,9 @@ function App() {
           )}
         </form>
       </section>
+      )}
 
+      {screen === "marketplace" && (
       <section className="marketplace-section">
         <div className="section-heading">
           <div>
@@ -738,7 +743,10 @@ function App() {
           </div>
         )}
       </section>
+      )}
 
+      {screen === "marketplace" && (
+      <>
       {detailStatus === "loading" && (
         <p className="muted-copy detail-status">Loading listing details...</p>
       )}
@@ -882,15 +890,11 @@ function App() {
       )}
       </>
       )}
+      </>
+      )}
 
       {screen === "create" && (
-        <section className="workspace-card">
-          <p className="eyebrow">SELL SOMETHING</p>
-          <h1>Create a listing</h1>
-          <p className="hero-copy">Add an item to the campus marketplace.</p>
-          {/** The existing listing form is the source of truth for creation. */}
-          <button type="button" onClick={() => navigateTo("marketplace")}>Open listing form →</button>
-        </section>
+        null
       )}
 
       {screen === "my-listings" && (
