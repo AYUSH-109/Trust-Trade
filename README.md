@@ -26,6 +26,7 @@ Phase 8: Escrow contract foundation
 - The frontend requires Sepolia by default before wallet authentication.
 - The frontend can fund a listing escrow using the deployed Sepolia contract.
 - ETH payments are calculated from a short-lived CoinGecko ETH/INR quote and exact payment amounts are enforced by the contract.
+- Offers and listing conversations are persisted in PostgreSQL behind authenticated API routes.
 
 ### Contract commands
 

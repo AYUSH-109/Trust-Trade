@@ -122,7 +122,9 @@ The frontend now requires the configured chain (Sepolia by default) before walle
 
 ## Phase 10: Orders and communication
 
-Build order creation, timelines, buyer-seller messages, shipping status, delivery confirmation, refunds, and dispute evidence.
+Offers and listing conversations are now persisted in PostgreSQL. Authenticated users can create offers, sellers can accept or reject pending offers, and listing-specific messages are stored through protected API routes.
+
+Order creation, timelines, shipping status, delivery confirmation, refunds, and dispute evidence remain.
 
 ## Phase 11: Testing
 

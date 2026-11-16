@@ -77,6 +77,22 @@ function App() {
   }, [token]);
 
   useEffect(() => {
+    if (!token) return undefined;
+
+    fetch(`${apiUrl}/api/offers`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? "Unable to load offers");
+        setOffers(result.data);
+      })
+      .catch((error) => console.error(error));
+
+    return undefined;
+  }, [token]);
+
+  useEffect(() => {
     if (!window.ethereum) return undefined;
 
     const handleAccountsChanged = () => {
@@ -427,35 +443,63 @@ function App() {
     }
   }
 
-  function handleMakeOffer(event) {
+  async function handleMakeOffer(event) {
     event.preventDefault();
     if (!selectedListing || !offerAmount || Number(offerAmount) <= 0) return;
 
-    setOffers((current) => [
-      {
-        id: crypto.randomUUID(),
-        listingId: selectedListing.id,
-        listingTitle: selectedListing.title,
-        amount: offerAmount,
-        message: offerMessage,
-        status: "Pending"
-      },
-      ...current
-    ]);
-    setOfferAmount("");
-    setOfferMessage("");
-    setStatus({ type: "success", message: "Offer sent to the seller." });
+    try {
+      const response = await fetch(`${apiUrl}/api/offers`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          listingId: selectedListing.id,
+          amount: offerAmount,
+          message: offerMessage
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to send offer");
+
+      setOffers((current) => [result.data, ...current]);
+      setOfferAmount("");
+      setOfferMessage("");
+      setStatus({ type: "success", message: "Offer sent to the seller." });
+    } catch (error) {
+      setStatus({ type: "error", message: error.message });
+    }
   }
 
-  function handleSendMessage(event) {
+  async function handleSendMessage(event) {
     event.preventDefault();
-    if (!chatMessage.trim()) return;
+    if (!chatMessage.trim() || !selectedListing) return;
 
-    setMessages((current) => [
-      ...current,
-      { id: crypto.randomUUID(), text: chatMessage.trim(), mine: true }
-    ]);
-    setChatMessage("");
+    try {
+      const response = await fetch(`${apiUrl}/api/offers/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          listingId: selectedListing.id,
+          recipientId: selectedListing.seller.id,
+          body: chatMessage.trim()
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to send message");
+
+      setMessages((current) => [
+        ...current,
+        { id: result.data.id, text: result.data.body, mine: true }
+      ]);
+      setChatMessage("");
+    } catch (error) {
+      setStatus({ type: "error", message: error.message });
+    }
   }
 
   return (
@@ -909,7 +953,7 @@ function App() {
           <p className="eyebrow">NEGOTIATE FAIRLY</p>
           <h1>Available offers</h1>
           {offers.length === 0 ? <p className="muted-copy">Offers from buyers will appear here as they bargain with you.</p> : (
-            <div className="offer-list">{offers.map((offer) => <article className="offer-row" key={offer.id}><div><strong>{offer.listingTitle}</strong><p>{offer.message || "No note attached"}</p></div><b>₹{offer.amount}</b><span>{offer.status}</span><button type="button" onClick={() => navigateTo("chat")}>Chat</button></article>)}</div>
+            <div className="offer-list">{offers.map((offer) => <article className="offer-row" key={offer.id}><div><strong>{offer.listing.title}</strong><p>{offer.message || "No note attached"}</p></div><b>₹{offer.amount}</b><span>{offer.status}</span><button type="button" onClick={() => { setSelectedListing({ id: offer.listingId, title: offer.listing.title, seller: offer.seller }); navigateTo("chat"); }}>Chat</button></article>)}</div>
           )}
         </section>
       )}
