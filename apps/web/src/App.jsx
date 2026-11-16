@@ -580,7 +580,14 @@ function App() {
 
   async function handleMakeOffer(event) {
     event.preventDefault();
-    if (!selectedListing || !offerAmount || Number(offerAmount) <= 0) return;
+    if (!token) {
+      setStatus({ type: "error", message: "Connect MetaMask before sending an offer." });
+      return;
+    }
+    if (!selectedListing || !offerAmount || Number(offerAmount) <= 0) {
+      setStatus({ type: "error", message: "Enter a positive offer amount." });
+      return;
+    }
 
     try {
       const response = await fetch(`${apiUrl}/api/offers`, {
@@ -595,8 +602,8 @@ function App() {
           message: offerMessage
         })
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Unable to send offer");
+      const result = await readApiResponse(response, "Unable to send offer");
+      if (!result.data) throw new Error("The server returned an invalid offer.");
 
       setOffers((current) => [result.data, ...current]);
       setOfferAmount("");
@@ -605,6 +612,16 @@ function App() {
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     }
+  }
+
+  function handleChatWithSeller() {
+    if (!token) {
+      setStatus({ type: "error", message: "Connect MetaMask before chatting with the seller." });
+      return;
+    }
+    setChatRecipientId(selectedListing.seller.id);
+    setMessages([]);
+    navigateTo("chat");
   }
 
   async function handleSendMessage(event) {
@@ -1122,7 +1139,14 @@ function App() {
                     <input type="number" min="1" step="1" value={offerAmount} onChange={(event) => setOfferAmount(event.target.value)} placeholder={selectedListing.price} />
                   </label>
                   <input value={offerMessage} onChange={(event) => setOfferMessage(event.target.value)} placeholder="Add a note to the seller (optional)" />
-                  <button type="submit" className="secondary-button">Send offer</button>
+                  <div className="detail-action-row">
+                    <button type="submit" className="secondary-button" disabled={!token || status.type === "loading"}>
+                      {status.type === "loading" ? "Sending..." : "Send offer"}
+                    </button>
+                    <button type="button" className="secondary-button" onClick={handleChatWithSeller}>
+                      Chat with seller
+                    </button>
+                  </div>
                 </form>
                 {!escrowContractAddress && (
                   <p className="muted-copy">Configure the deployed escrow contract first.</p>
