@@ -9,6 +9,7 @@ const orderSelection = {
   sellerId: true,
   escrowId: true,
   fundingTxHash: true,
+  withdrawalTxHash: true,
   shippedAt: true,
   deliveredAt: true,
   createdAt: true,
@@ -65,14 +66,27 @@ export async function findOrders(userId) {
   return orders.map(serializeOrder);
 }
 
-export async function updateOrderStatus(id, userId, status, escrowId, fundingTxHash) {
+export async function updateOrderStatus(id, userId, status, escrowId, fundingTxHash, withdrawalTxHash) {
   const order = await prisma.order.findUnique({ where: { id } });
   if (!order) return { status: "not_found" };
+
+  if (status === "RELEASED") {
+    if (order.sellerId !== userId || order.status !== "DELIVERED" || !withdrawalTxHash) {
+      return { status: "invalid_state" };
+    }
+    const updated = await prisma.order.update({
+      where: { id },
+      data: { status, withdrawalTxHash },
+      select: orderSelection
+    });
+    return { status: "updated", order: serializeOrder(updated) };
+  }
 
   if (status === "FUNDED") {
     if (order.buyerId !== userId || order.status !== "AWAITING_ESCROW" || !escrowId || !fundingTxHash) {
       return { status: "invalid_state" };
     }
+
     const updated = await prisma.order.update({
       where: { id },
       data: { status, escrowId, fundingTxHash },

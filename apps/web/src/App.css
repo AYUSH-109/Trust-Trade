@@ -151,6 +151,12 @@ h2 {
   color: var(--muted);
 }
 
+.transaction-link {
+  color: var(--green);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .listing-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

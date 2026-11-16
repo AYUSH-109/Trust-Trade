@@ -41,7 +41,7 @@ router.post("/", async (request, response) => {
 
 router.patch("/:id", async (request, response) => {
   const status = request.body?.status;
-  if (!["FUNDED", "SHIPPED", "DELIVERED", "DISPUTED"].includes(status)) {
+  if (!["FUNDED", "SHIPPED", "DELIVERED", "DISPUTED", "RELEASED"].includes(status)) {
     return response.status(400).json({ error: "Unsupported order status" });
   }
 
@@ -51,7 +51,8 @@ router.patch("/:id", async (request, response) => {
       request.auth.sub,
       status,
       request.body?.escrowId,
-      request.body?.fundingTxHash
+      request.body?.fundingTxHash,
+      request.body?.withdrawalTxHash
     );
     if (result.status === "not_found") return response.status(404).json({ error: "Order not found" });
     if (result.status === "forbidden") return response.status(403).json({ error: "You cannot update this order" });

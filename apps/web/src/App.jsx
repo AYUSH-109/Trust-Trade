@@ -906,8 +906,17 @@ function App() {
       if (receipt.status !== "success") {
         throw new Error("The withdrawal transaction was rejected by the blockchain.");
       }
+      const response = await fetch(`${apiUrl}/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "RELEASED", withdrawalTxHash: hash })
+      });
+      const result = await readApiResponse(response, "Unable to save payout transaction");
+      setOrders((current) => current.map((currentOrder) => currentOrder.id === order.id ? result.data : currentOrder));
       setStatus({ type: "success", message: `Payout withdrawn. Transaction: ${hash}` });
-      await refreshOffersAndOrders();
     } catch (error) {
       console.error(error);
       setStatus({ type: "error", message: getWalletErrorMessage(error) });
@@ -1501,6 +1510,7 @@ function App() {
                 {order.status === "SHIPPED" && isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "DELIVERED")}>Confirm delivery</button>}
                 {order.status === "DELIVERED" && isBuyer && <button type="button" disabled={Boolean(pendingAction)} onClick={() => handleRetryDeliveryRelease(order)}>{pendingAction === `release:${order.id}` ? "Verifying release..." : "Verify delivery release"}</button>}
                 {order.status === "DELIVERED" && !isBuyer && <button type="button" disabled={Boolean(pendingAction)} onClick={() => handleWithdraw(order)}>{pendingAction === `withdraw:${order.id}` ? "Checking payout..." : "Withdraw payout"}</button>}
+                {order.status === "RELEASED" && order.withdrawalTxHash && <a className="transaction-link" href={`https://sepolia.etherscan.io/tx/${order.withdrawalTxHash}`} target="_blank" rel="noreferrer">View payout transaction</a>}
                 {["FUNDED", "SHIPPED"].includes(order.status) && isBuyer && <button type="button" className="secondary-button" onClick={() => handleOrderStatus(order.id, "DISPUTED")}>Raise dispute</button>}
               </article>;
             })}</div>
