@@ -53,6 +53,7 @@ function App() {
   const [offers, setOffers] = useState([]);
   const [chatMessage, setChatMessage] = useState("");
   const [messages, setMessages] = useState([]);
+  const [chatRecipientId, setChatRecipientId] = useState("");
 
   useEffect(() => {
     if (!token) return undefined;
@@ -290,6 +291,7 @@ function App() {
       }
 
       setSelectedListing(result.data);
+      setChatRecipientId(result.data.seller.id);
       setEditForm({
         title: result.data.title,
         description: result.data.description,
@@ -485,7 +487,7 @@ function App() {
         },
         body: JSON.stringify({
           listingId: selectedListing.id,
-          recipientId: selectedListing.seller.id,
+          recipientId: chatRecipientId || selectedListing.seller.id,
           body: chatMessage.trim()
         })
       });
@@ -497,6 +499,27 @@ function App() {
         { id: result.data.id, text: result.data.body, mine: true }
       ]);
       setChatMessage("");
+    } catch (error) {
+      setStatus({ type: "error", message: error.message });
+    }
+
+  }
+
+  async function handleOfferStatus(offerId, nextStatus) {
+    try {
+      const response = await fetch(`${apiUrl}/api/offers/${offerId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: nextStatus })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to update offer");
+      setOffers((current) =>
+        current.map((offer) => (offer.id === offerId ? result.data : offer))
+      );
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     }
@@ -953,7 +976,7 @@ function App() {
           <p className="eyebrow">NEGOTIATE FAIRLY</p>
           <h1>Available offers</h1>
           {offers.length === 0 ? <p className="muted-copy">Offers from buyers will appear here as they bargain with you.</p> : (
-            <div className="offer-list">{offers.map((offer) => <article className="offer-row" key={offer.id}><div><strong>{offer.listing.title}</strong><p>{offer.message || "No note attached"}</p></div><b>₹{offer.amount}</b><span>{offer.status}</span><button type="button" onClick={() => { setSelectedListing({ id: offer.listingId, title: offer.listing.title, seller: offer.seller }); navigateTo("chat"); }}>Chat</button></article>)}</div>
+            <div className="offer-list">{offers.map((offer) => <article className="offer-row" key={offer.id}><div><strong>{offer.listing.title}</strong><p>{offer.message || "No note attached"}</p></div><b>₹{offer.amount}</b><span>{offer.status}</span>{offer.sellerId === userId && offer.status === "PENDING" && <><button type="button" onClick={() => handleOfferStatus(offer.id, "ACCEPTED")}>Accept</button><button type="button" className="secondary-button" onClick={() => handleOfferStatus(offer.id, "REJECTED")}>Decline</button></>}<button type="button" onClick={() => { setSelectedListing({ id: offer.listingId, title: offer.listing.title, seller: offer.seller }); setChatRecipientId(offer.buyerId); navigateTo("chat"); }}>Chat</button></article>)}</div>
           )}
         </section>
       )}
