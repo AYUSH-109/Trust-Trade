@@ -485,3 +485,591 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* Trust Trade spatial system */
+:root {
+  --ink: #161a1d;
+  --muted: #6f6a6b;
+  --paper: #f5f3f4;
+  --card: rgba(255, 255, 255, 0.62);
+  --line: rgba(255, 255, 255, 0.8);
+  --red: #a4161a;
+  --red-dark: #660708;
+  --red-bright: #e5383b;
+  --clay: #d3d3d3;
+  --shadow-clay: 14px 14px 30px rgba(11, 9, 10, 0.13), -10px -10px 24px rgba(255, 255, 255, 0.82);
+}
+
+body {
+  background:
+    radial-gradient(circle at 8% 8%, rgba(229, 56, 59, 0.16), transparent 30rem),
+    radial-gradient(circle at 92% 18%, rgba(164, 22, 26, 0.13), transparent 28rem),
+    var(--paper);
+  color: var(--ink);
+}
+
+button {
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.topbar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(1240px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 1.05rem;
+  letter-spacing: -0.03em;
+}
+
+.brand-mark:hover {
+  background: transparent;
+  color: var(--red);
+}
+
+.brand-orb,
+.login-symbol {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: var(--red);
+  box-shadow: inset 3px 3px 6px rgba(255, 255, 255, 0.28), 4px 5px 10px rgba(164, 22, 26, 0.28);
+  color: white;
+}
+
+.glass-button,
+.profile-button {
+  width: auto;
+  padding: 10px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow: 0 8px 26px rgba(11, 9, 10, 0.07);
+  color: var(--ink);
+  backdrop-filter: blur(18px);
+}
+
+.glass-button:hover,
+.profile-button:hover {
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--red);
+}
+
+.landing-screen {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.landing-topbar {
+  padding-top: 30px;
+}
+
+.landing-content {
+  position: relative;
+  z-index: 2;
+  width: min(1240px, calc(100% - 48px));
+  margin: 10vh auto 0;
+}
+
+.landing-content h1,
+.login-card h1,
+.workspace-card h1 {
+  max-width: 820px;
+  margin-bottom: 24px;
+  font-size: clamp(3.2rem, 8vw, 7.5rem);
+  line-height: 0.9;
+  letter-spacing: -0.085em;
+}
+
+h1 em {
+  color: var(--red);
+  font-style: normal;
+}
+
+.landing-copy {
+  max-width: 470px;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1.65;
+}
+
+.landing-actions {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-top: 32px;
+}
+
+.landing-actions button,
+.login-button {
+  width: auto;
+  background: var(--red);
+  box-shadow: 8px 10px 18px rgba(164, 22, 26, 0.22);
+}
+
+.landing-actions button span,
+.login-button span {
+  margin-left: 18px;
+  font-size: 1.2rem;
+}
+
+.landing-note,
+.login-footnote {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.landing-bento {
+  position: absolute;
+  right: max(4vw, calc((100% - 1240px) / 2));
+  bottom: 11vh;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+  width: 390px;
+  transform: rotate(-6deg);
+}
+
+.landing-mini-card,
+.clay-card,
+.workspace-card,
+.detail-card,
+.form-card {
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: var(--shadow-clay);
+  backdrop-filter: blur(22px) saturate(130%);
+}
+
+.landing-mini-card {
+  min-height: 150px;
+  padding: 22px;
+  border-radius: 28px;
+}
+
+.mini-card-large {
+  grid-row: span 2;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.mini-card-dark {
+  background: var(--ink);
+  color: white;
+}
+
+.mini-card-price {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  background: var(--red);
+  color: white;
+}
+
+.mini-card-price span {
+  font-size: 2.8rem;
+  font-weight: 900;
+}
+
+.mini-card-price strong {
+  font-size: 1.9rem;
+}
+
+.mini-card-price small,
+.landing-mini-card p {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.mini-card-large p {
+  color: var(--muted);
+}
+
+.mini-icon {
+  display: block;
+  margin-bottom: 34px;
+  color: var(--red-bright);
+  font-size: 1.7rem;
+}
+
+.landing-glow {
+  position: absolute;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  filter: blur(10px);
+  opacity: 0.35;
+}
+
+.landing-glow-one {
+  top: 15%;
+  right: 12%;
+  background: var(--red-bright);
+}
+
+.landing-glow-two {
+  bottom: -100px;
+  left: 18%;
+  background: var(--red-dark);
+}
+
+.login-screen {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1.1fr);
+  min-height: 100vh;
+  padding: 5vw;
+  gap: 5vw;
+  align-items: center;
+}
+
+.login-card {
+  position: relative;
+  max-width: 560px;
+  padding: clamp(28px, 5vw, 64px);
+  border-radius: 42px;
+}
+
+.back-button {
+  width: auto;
+  padding: 0;
+  margin-bottom: 50px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.back-button:hover {
+  background: transparent;
+  color: var(--red);
+}
+
+.login-symbol {
+  width: 54px;
+  height: 54px;
+  margin-bottom: 28px;
+  border-radius: 18px;
+  font-size: 1.5rem;
+}
+
+.login-card h1 {
+  font-size: clamp(3rem, 6vw, 5.3rem);
+}
+
+.login-button {
+  margin-top: 20px;
+}
+
+.login-art {
+  position: relative;
+  min-height: 540px;
+  overflow: hidden;
+  border-radius: 44px;
+  background: var(--ink);
+  box-shadow: var(--shadow-clay);
+}
+
+.art-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(1px);
+}
+
+.orb-one {
+  top: 12%;
+  left: 12%;
+  width: 260px;
+  height: 260px;
+  background: var(--red);
+  box-shadow: 35px 35px 70px rgba(229, 56, 59, 0.26);
+}
+
+.orb-two {
+  right: -80px;
+  bottom: -50px;
+  width: 340px;
+  height: 340px;
+  background: var(--red-dark);
+}
+
+.art-note {
+  position: absolute;
+  right: 12%;
+  bottom: 12%;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  backdrop-filter: blur(18px);
+}
+
+.art-note span {
+  display: block;
+  margin-bottom: 20px;
+  color: var(--red-bright);
+  font-size: 0.72rem;
+}
+
+.app-topbar {
+  position: sticky;
+  top: 0;
+  background: rgba(245, 243, 244, 0.62);
+  backdrop-filter: blur(20px);
+}
+
+.main-nav {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 22px;
+}
+
+.main-nav button {
+  width: auto;
+  padding: 9px 13px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.83rem;
+}
+
+.main-nav button:hover,
+.main-nav .nav-active {
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--red);
+}
+
+.nav-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: var(--red);
+  color: white;
+  font-size: 0.68rem;
+}
+
+.profile-wrap {
+  position: relative;
+}
+
+.profile-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--red);
+  color: white;
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.profile-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  display: grid;
+  width: 210px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 20px 50px rgba(11, 9, 10, 0.14);
+  backdrop-filter: blur(24px);
+}
+
+.profile-menu button {
+  width: 100%;
+  padding: 11px 12px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font-size: 0.8rem;
+}
+
+.profile-menu button:hover {
+  background: rgba(229, 56, 59, 0.1);
+  color: var(--red);
+}
+
+.profile-menu .menu-logout {
+  margin-top: 6px;
+  border-top: 1px solid #eee;
+  color: var(--red-dark);
+}
+
+.workspace-card {
+  min-height: 480px;
+  padding: clamp(26px, 5vw, 60px);
+  border-radius: 34px;
+}
+
+.workspace-card h1 {
+  font-size: clamp(3rem, 6vw, 6rem);
+}
+
+.offer-list {
+  display: grid;
+  gap: 12px;
+}
+
+.offer-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 17px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.offer-row p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.offer-row b {
+  color: var(--red);
+}
+
+.offer-row > span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.offer-row button {
+  width: auto;
+  padding: 8px 12px;
+}
+
+.offer-form {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(164, 22, 26, 0.12);
+}
+
+.chat-workspace {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 32px;
+}
+
+.chat-panel {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 390px;
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.message {
+  max-width: 75%;
+  padding: 11px 14px;
+  border-radius: 16px 16px 16px 4px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.message.mine {
+  align-self: flex-end;
+  border-radius: 16px 16px 4px 16px;
+  background: var(--red);
+  color: white;
+}
+
+.chat-composer {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.chat-composer button {
+  width: auto;
+}
+
+@media (max-width: 780px) {
+  .topbar,
+  .landing-content {
+    width: min(100% - 28px, 1240px);
+  }
+
+  .main-nav {
+    display: none;
+  }
+
+  .landing-content {
+    margin-top: 8vh;
+  }
+
+  .landing-bento {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: min(390px, calc(100% - 28px));
+    margin: 80px auto 40px;
+  }
+
+  .login-screen,
+  .chat-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .login-art {
+    display: none;
+  }
+
+  .offer-row {
+    grid-template-columns: 1fr auto;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .landing-mini-card,
+  .clay-card,
+  .workspace-card,
+  .detail-card,
+  .form-card,
+  .profile-menu,
+  .app-topbar {
+    background: var(--paper);
+    backdrop-filter: none;
+  }
+}

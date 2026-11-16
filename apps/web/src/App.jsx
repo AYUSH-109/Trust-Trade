@@ -46,6 +46,13 @@ function App() {
   const [escrowAmount, setEscrowAmount] = useState("");
   const [ethQuote, setEthQuote] = useState(null);
   const [quoteStatus, setQuoteStatus] = useState("idle");
+  const [screen, setScreen] = useState("landing");
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [offerAmount, setOfferAmount] = useState("");
+  const [offerMessage, setOfferMessage] = useState("");
+  const [offers, setOffers] = useState([]);
+  const [chatMessage, setChatMessage] = useState("");
+  const [messages, setMessages] = useState([]);
 
   useEffect(() => {
     if (!token) return undefined;
@@ -59,6 +66,7 @@ function App() {
         setWallet(result.data.wallet);
         setUserId(result.data.id);
         setAuthStatus("Connected");
+        setScreen("marketplace");
       })
       .catch((error) => {
         console.error(error);
@@ -228,6 +236,7 @@ function App() {
       setToken(verifyResult.data.token);
       localStorage.setItem("trust_trade_token", verifyResult.data.token);
       setAuthStatus("Connected");
+      setScreen("marketplace");
     } catch (error) {
       console.error(error);
       setAuthStatus(error.message);
@@ -244,6 +253,13 @@ function App() {
     setNetworkStatus("idle");
     setAuthStatus(message);
     setEditMode(false);
+    setScreen("landing");
+    setProfileOpen(false);
+  }
+
+  function navigateTo(nextScreen) {
+    setScreen(nextScreen);
+    setProfileOpen(false);
   }
 
   async function handleListingSelect(listingId) {
@@ -411,8 +427,142 @@ function App() {
     }
   }
 
+  function handleMakeOffer(event) {
+    event.preventDefault();
+    if (!selectedListing || !offerAmount || Number(offerAmount) <= 0) return;
+
+    setOffers((current) => [
+      {
+        id: crypto.randomUUID(),
+        listingId: selectedListing.id,
+        listingTitle: selectedListing.title,
+        amount: offerAmount,
+        message: offerMessage,
+        status: "Pending"
+      },
+      ...current
+    ]);
+    setOfferAmount("");
+    setOfferMessage("");
+    setStatus({ type: "success", message: "Offer sent to the seller." });
+  }
+
+  function handleSendMessage(event) {
+    event.preventDefault();
+    if (!chatMessage.trim()) return;
+
+    setMessages((current) => [
+      ...current,
+      { id: crypto.randomUUID(), text: chatMessage.trim(), mine: true }
+    ]);
+    setChatMessage("");
+  }
+
   return (
-    <main className="page-shell">
+    <main className="app-shell">
+      {screen === "landing" && (
+        <section className="landing-screen">
+          <div className="landing-glow landing-glow-one" />
+          <div className="landing-glow landing-glow-two" />
+          <header className="topbar landing-topbar">
+            <button className="brand-mark" type="button" onClick={() => navigateTo("landing")}>
+              <span className="brand-orb">✦</span>
+              Trust Trade
+            </button>
+            <button className="glass-button" type="button" onClick={() => navigateTo("login")}>
+              Sign in <span>↗</span>
+            </button>
+          </header>
+          <div className="landing-content">
+            <p className="eyebrow">THE CAMPUS EXCHANGE</p>
+            <h1>Trade with trust.<br /><em>Move with confidence.</em></h1>
+            <p className="landing-copy">
+              A calmer marketplace for campus life. Find what you need, make a fair offer,
+              and let escrow keep the exchange honest.
+            </p>
+            <div className="landing-actions">
+              <button type="button" onClick={() => navigateTo("login")}>Enter marketplace <span>→</span></button>
+              <span className="landing-note">Protected by on-chain escrow</span>
+            </div>
+          </div>
+          <div className="landing-bento">
+            <div className="landing-mini-card mini-card-large">
+              <span className="mini-icon">◒</span>
+              <strong>Fair exchange</strong>
+              <p>Offers, bargains, and transparent settlement.</p>
+            </div>
+            <div className="landing-mini-card mini-card-dark">
+              <span className="mini-icon">⌁</span>
+              <strong>Campus, connected</strong>
+              <p>Everything students need, close to home.</p>
+            </div>
+            <div className="landing-mini-card mini-card-price">
+              <span>₹</span><strong>10k+</strong><small>items traded</small>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {screen === "login" && (
+        <section className="login-screen">
+          <div className="login-card clay-card">
+            <button className="back-button" type="button" onClick={() => navigateTo("landing")}>← Back</button>
+            <div className="login-symbol">✦</div>
+            <p className="eyebrow">WELCOME TO TRUST TRADE</p>
+            <h1>Your campus,<br /><em>in your hands.</em></h1>
+            <p className="hero-copy">
+              Connect a MetaMask wallet to create your profile. Use a different wallet
+              to test another account.
+            </p>
+            <button className="login-button" type="button" onClick={handleConnectWallet}>
+              {authStatus === "Connecting..." ? "Connecting..." : "Continue with MetaMask"} <span>→</span>
+            </button>
+            {authStatus !== "idle" && <p className="wallet-status">{authStatus}</p>}
+            <p className="login-footnote">Sepolia test network · No passwords required</p>
+          </div>
+          <div className="login-art">
+            <div className="art-orb orb-one" />
+            <div className="art-orb orb-two" />
+            <div className="art-note">
+              <span>01</span>
+              <strong>Buy better.<br />Sell simpler.</strong>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {screen !== "landing" && screen !== "login" && (
+      <>
+      <header className="topbar app-topbar">
+        <button className="brand-mark" type="button" onClick={() => navigateTo("marketplace")}>
+          <span className="brand-orb">✦</span>
+          Trust Trade
+        </button>
+        <nav className="main-nav" aria-label="Main navigation">
+          <button className={screen === "marketplace" ? "nav-active" : ""} type="button" onClick={() => navigateTo("marketplace")}>Marketplace</button>
+          <button className={screen === "offers" ? "nav-active" : ""} type="button" onClick={() => navigateTo("offers")}>Offers <span className="nav-count">{offers.length}</span></button>
+          <button className={screen === "chat" ? "nav-active" : ""} type="button" onClick={() => navigateTo("chat")}>Chat</button>
+        </nav>
+        <div className="profile-wrap">
+          <button className="profile-button" type="button" onClick={() => setProfileOpen((current) => !current)}>
+            <span className="profile-avatar">{wallet ? wallet.slice(2, 4).toUpperCase() : "TT"}</span>
+            <span className="profile-name">{wallet ? `${wallet.slice(0, 6)}...` : "Profile"}</span>
+            <span>⌄</span>
+          </button>
+          {profileOpen && (
+            <div className="profile-menu">
+              <button type="button" onClick={() => navigateTo("create")}>＋ Create listing</button>
+              <button type="button" onClick={() => navigateTo("my-listings")}>▦ My listings</button>
+              <button type="button" onClick={() => navigateTo("offers")}>◌ Available offers</button>
+              <button type="button" onClick={() => navigateTo("chat")}>◍ Chat with clients</button>
+              <button type="button" className="menu-logout" onClick={() => handleLogout()}>Log out</button>
+            </div>
+          )}
+        </div>
+      </header>
+      <div className="page-shell">
+      {screen === "marketplace" && (
+      <>
       <header className="hero">
         <button className="wallet-button" type="button" onClick={handleConnectWallet}>
           {wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "Connect MetaMask"}
@@ -714,6 +864,14 @@ function App() {
                 >
                   {status.type === "loading" ? "Processing..." : "Fund with escrow"}
                 </button>
+                <form className="offer-form" onSubmit={handleMakeOffer}>
+                  <label>
+                    Make an offer (₹)
+                    <input type="number" min="1" step="1" value={offerAmount} onChange={(event) => setOfferAmount(event.target.value)} placeholder={selectedListing.price} />
+                  </label>
+                  <input value={offerMessage} onChange={(event) => setOfferMessage(event.target.value)} placeholder="Add a note to the seller (optional)" />
+                  <button type="submit" className="secondary-button">Send offer</button>
+                </form>
                 {!escrowContractAddress && (
                   <p className="muted-copy">Configure the deployed escrow contract first.</p>
                 )}
@@ -721,6 +879,56 @@ function App() {
             )}
           </div>
         </section>
+      )}
+      </>
+      )}
+
+      {screen === "create" && (
+        <section className="workspace-card">
+          <p className="eyebrow">SELL SOMETHING</p>
+          <h1>Create a listing</h1>
+          <p className="hero-copy">Add an item to the campus marketplace.</p>
+          {/** The existing listing form is the source of truth for creation. */}
+          <button type="button" onClick={() => navigateTo("marketplace")}>Open listing form →</button>
+        </section>
+      )}
+
+      {screen === "my-listings" && (
+        <section className="workspace-card">
+          <p className="eyebrow">YOUR SPACE</p>
+          <h1>My listings</h1>
+          <div className="listing-grid">
+            {listings.filter((listing) => listing.seller.id === userId).map((listing) => (
+              <button className="listing-card" key={listing.id} type="button" onClick={() => { navigateTo("marketplace"); handleListingSelect(listing.id); }}>
+                {listing.images[0] ? <img src={listing.images[0].url} alt={listing.title} /> : <div className="image-placeholder">No image</div>}
+                <div className="listing-card-content"><h3>{listing.title}</h3><strong>₹{listing.price}</strong></div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {screen === "offers" && (
+        <section className="workspace-card">
+          <p className="eyebrow">NEGOTIATE FAIRLY</p>
+          <h1>Available offers</h1>
+          {offers.length === 0 ? <p className="muted-copy">Offers from buyers will appear here as they bargain with you.</p> : (
+            <div className="offer-list">{offers.map((offer) => <article className="offer-row" key={offer.id}><div><strong>{offer.listingTitle}</strong><p>{offer.message || "No note attached"}</p></div><b>₹{offer.amount}</b><span>{offer.status}</span><button type="button" onClick={() => navigateTo("chat")}>Chat</button></article>)}</div>
+          )}
+        </section>
+      )}
+
+      {screen === "chat" && (
+        <section className="workspace-card chat-workspace">
+          <div><p className="eyebrow">DIRECT MESSAGES</p><h1>Chat with clients</h1><p className="hero-copy">Bargain clearly, then move the agreed amount into escrow.</p></div>
+          <div className="chat-panel">
+            <div className="message-list">{messages.length === 0 ? <p className="muted-copy">Start a conversation from an offer.</p> : messages.map((message) => <div className={message.mine ? "message mine" : "message"} key={message.id}>{message.text}</div>)}</div>
+            <form onSubmit={handleSendMessage} className="chat-composer"><input value={chatMessage} onChange={(event) => setChatMessage(event.target.value)} placeholder="Write a message..." /><button type="submit">Send</button></form>
+          </div>
+        </section>
+      )}
+      </div>
+      </>
       )}
     </main>
   );

@@ -9,3 +9,4 @@ coverage/
 *.log
 contracts/artifacts/
 contracts/cache/
+.project-skills/
