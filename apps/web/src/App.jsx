@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createWalletClient, custom, parseEventLogs } from "viem";
 import {
   escrowAbi,
@@ -79,7 +79,7 @@ function App() {
   const [selectedOrderAmount, setSelectedOrderAmount] = useState("");
   const [ethQuote, setEthQuote] = useState(null);
   const [quoteStatus, setQuoteStatus] = useState("idle");
-  const [screen, setScreen] = useState("landing");
+  const [screen, setScreen] = useState(() => window.location.hash.slice(1) || "landing");
   const [profileOpen, setProfileOpen] = useState(false);
   const [offerAmount, setOfferAmount] = useState("");
   const [offerMessage, setOfferMessage] = useState("");
@@ -88,6 +88,36 @@ function App() {
   const [chatMessage, setChatMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [chatRecipientId, setChatRecipientId] = useState("");
+  const handleListingSelectRef = useRef(null);
+
+  async function refreshOffersAndOrders() {
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    const [offersResponse, ordersResponse] = await Promise.all([
+      fetch(`${apiUrl}/api/offers`, { headers }),
+      fetch(`${apiUrl}/api/orders`, { headers })
+    ]);
+    const offersResult = await readApiResponse(offersResponse, "Unable to refresh offers");
+    const ordersResult = await readApiResponse(ordersResponse, "Unable to refresh orders");
+    setOffers(offersResult.data);
+    setOrders(ordersResult.data);
+  }
+
+  useEffect(() => {
+    function handleHistoryChange(event) {
+      const nextScreen = event.state?.screen ?? window.location.hash.split("/")[0].slice(1) ?? "marketplace";
+      setScreen(nextScreen || "marketplace");
+      if (event.state?.listingId) {
+        handleListingSelectRef.current?.(event.state.listingId, false);
+      } else {
+        setSelectedListing(null);
+        setDetailStatus("idle");
+      }
+    }
+
+    window.addEventListener("popstate", handleHistoryChange);
+    return () => window.removeEventListener("popstate", handleHistoryChange);
+  }, []);
 
   useEffect(() => {
     if (!token) return undefined;
@@ -347,6 +377,9 @@ function App() {
   }
 
   function navigateTo(nextScreen) {
+    if (screen !== nextScreen) {
+      window.history.pushState({ screen: nextScreen }, "", `#${nextScreen}`);
+    }
     setScreen(nextScreen);
     setProfileOpen(false);
   }
@@ -382,7 +415,11 @@ function App() {
     }
   }
 
-  async function handleListingSelect(listingId) {
+  async function handleListingSelect(listingId, pushHistory = true) {
+    if (pushHistory) {
+      window.history.pushState({ screen: "marketplace", listingId }, "", `#marketplace/${listingId}`);
+    }
+
     setDetailStatus("loading");
 
     try {
@@ -413,6 +450,8 @@ function App() {
     }
 
   }
+
+  handleListingSelectRef.current = handleListingSelect;
 
   async function loadEthQuote(listingId, listingPrice = selectedListing?.price) {
     setQuoteStatus("loading");
@@ -1224,8 +1263,25 @@ function App() {
         <section className="workspace-card">
           <p className="eyebrow">NEGOTIATE FAIRLY</p>
           <h1>Available offers</h1>
-          {offers.length === 0 ? <p className="muted-copy">Offers from buyers will appear here as they bargain with you.</p> : (
-            <div className="offer-list">{offers.map((offer) => <article className="offer-row" key={offer.id}><div><strong>{offer.listing.title}</strong><p>{offer.message || "No note attached"}</p></div><b>₹{offer.amount}</b><span>{offer.status}</span>{offer.sellerId === userId && offer.status === "PENDING" && <><button type="button" onClick={() => handleOfferStatus(offer.id, "ACCEPTED")}>Accept</button><button type="button" className="secondary-button" onClick={() => handleOfferStatus(offer.id, "REJECTED")}>Decline</button></>}{offer.buyerId === userId && offer.status === "ACCEPTED" && !orders.some((order) => order.offerId === offer.id) && <button type="button" onClick={() => handleCreateOrder(offer.id)}>Start order</button>}<button type="button" onClick={() => { setSelectedListing({ id: offer.listingId, title: offer.listing.title, seller: offer.seller }); setChatRecipientId(offer.buyerId); navigateTo("chat"); }}>Chat</button></article>)}</div>
+          <button type="button" className="secondary-button workspace-refresh" onClick={() => refreshOffersAndOrders()}>
+            Refresh offers
+          </button>
+          {offers.filter((offer) => offer.status !== "REJECTED").length === 0 ? <p className="muted-copy">No active offers yet.</p> : (
+            <div className="offer-list">{offers.filter((offer) => offer.status !== "REJECTED").map((offer) => <article className="offer-row" key={offer.id}><div><strong>{offer.listing.title}</strong><p>{offer.message || "No note attached"}</p></div><b>₹{offer.amount}</b><span>{offer.status}</span>{offer.sellerId === userId && offer.status === "PENDING" && <><button type="button" onClick={() => handleOfferStatus(offer.id, "ACCEPTED")}>Accept</button><button type="button" className="secondary-button" onClick={() => handleOfferStatus(offer.id, "REJECTED")}>Decline</button></>}{offer.buyerId === userId && offer.status === "ACCEPTED" && !orders.some((order) => order.offerId === offer.id) && <button type="button" onClick={() => handleCreateOrder(offer.id)}>Refresh order</button>}<button type="button" onClick={() => { setSelectedListing({ id: offer.listingId, title: offer.listing.title, seller: offer.seller }); setChatRecipientId(offer.buyerId); navigateTo("chat"); }}>Chat</button></article>)}</div>
+          )}
+          {offers.some((offer) => offer.status === "REJECTED") && (
+            <details className="rejected-offers">
+              <summary>Rejected offers ({offers.filter((offer) => offer.status === "REJECTED").length})</summary>
+              <div className="offer-list">
+                {offers.filter((offer) => offer.status === "REJECTED").map((offer) => (
+                  <article className="offer-row rejected-offer" key={offer.id}>
+                    <div><strong>{offer.listing.title}</strong><p>{offer.message || "No note attached"}</p></div>
+                    <b>₹{offer.amount}</b>
+                    <span>REJECTED</span>
+                  </article>
+                ))}
+              </div>
+            </details>
           )}
         </section>
       )}
@@ -1234,6 +1290,9 @@ function App() {
         <section className="workspace-card">
           <p className="eyebrow">ESCROW WORKSPACE</p>
           <h1>Your orders</h1>
+          <button type="button" className="secondary-button workspace-refresh" onClick={() => refreshOffersAndOrders()}>
+            Refresh orders
+          </button>
           {orders.length === 0 ? <p className="muted-copy">Accepted offers become orders here.</p> : (
             <div className="offer-list">{orders.map((order) => {
               const isBuyer = order.buyerId === userId;

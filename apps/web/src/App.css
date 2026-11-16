@@ -965,6 +965,11 @@ h1 em {
   font-size: clamp(3rem, 6vw, 6rem);
 }
 
+.workspace-refresh {
+  width: auto;
+  margin: 0 0 20px;
+}
+
 .offer-list {
   display: grid;
   gap: 12px;
@@ -1004,6 +1009,26 @@ h1 em {
   margin-top: 18px;
   padding-top: 18px;
   border-top: 1px solid rgba(164, 22, 26, 0.12);
+}
+
+.rejected-offers {
+  margin-top: 24px;
+  border-top: 1px solid rgba(164, 22, 26, 0.14);
+  padding-top: 18px;
+}
+
+.rejected-offers summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.rejected-offers .offer-list {
+  margin-top: 14px;
+}
+
+.rejected-offer {
+  opacity: 0.72;
 }
 
 .detail-action-row {

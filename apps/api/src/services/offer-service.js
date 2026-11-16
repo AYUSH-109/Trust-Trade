@@ -72,6 +72,18 @@ export async function updateOfferStatus(id, userId, status) {
       select: offerSelection
     });
     if (status === "ACCEPTED") {
+      await transaction.order.create({
+        data: {
+          offerId: id,
+          listingId: offer.listingId,
+          buyerId: offer.buyerId,
+          sellerId: offer.sellerId
+        }
+      });
+      await transaction.listing.update({
+        where: { id: offer.listingId },
+        data: { status: "RESERVED" }
+      });
       await transaction.offer.updateMany({
         where: {
           listingId: offer.listingId,
