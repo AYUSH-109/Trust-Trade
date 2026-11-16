@@ -51,6 +51,25 @@ export const escrowAbi = [
     outputs: [{ name: "amount", type: "uint256" }]
   },
   {
+    name: "getEscrow",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "escrowId", type: "uint256" }],
+    outputs: [{
+      name: "escrow",
+      type: "tuple",
+      components: [
+        { name: "buyer", type: "address" },
+        { name: "seller", type: "address" },
+        { name: "amount", type: "uint256" },
+        { name: "createdAt", type: "uint256" },
+        { name: "deliveryDeadline", type: "uint256" },
+        { name: "listingId", type: "bytes32" },
+        { name: "status", type: "uint8" }
+      ]
+    }]
+  },
+  {
     name: "EscrowCreated",
     type: "event",
     inputs: [

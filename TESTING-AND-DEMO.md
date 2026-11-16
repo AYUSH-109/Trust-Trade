@@ -106,6 +106,7 @@ In MetaMask, select **Sepolia**, not Ethereum Mainnet. Import or use two separat
 2. Select **Mark shipped** and confirm the blockchain transaction.
 3. Switch to the buyer account and select **Confirm delivery**, then confirm the blockchain transaction.
 4. Switch back to the seller account and select **Withdraw payout**. Escrow uses a pull-payment model, so this transaction moves the released ETH into the seller wallet.
+   If the order says delivered but no payout is available, switch to the buyer wallet and select **Verify delivery release**. This checks the escrow contract and retries the release only when it has not happened yet.
 5. For a dispute demonstration, use a funded or shipped order and select **Raise dispute** instead.
 
 ## 6. API smoke checks

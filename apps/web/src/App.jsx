@@ -823,7 +823,10 @@ function App() {
         account,
         args: contractFunction === "withdraw" ? [] : [BigInt(order.escrowId)]
       });
-      await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") {
+        throw new Error("The blockchain rejected this escrow update. The order was not changed.");
+      }
 
       if (nextStatus === "RELEASE_ESCROW") {
         setStatus({ type: "success", message: "Escrow release confirmed on-chain. The seller can now withdraw." });
@@ -857,6 +860,7 @@ function App() {
       setPendingAction("");
       return;
     }
+
     try {
       if (!(await ensureSupportedNetwork())) return;
       const { publicClient, walletClient } = getEscrowClients(window.ethereum, targetChainId);
@@ -898,9 +902,53 @@ function App() {
         account,
         args: []
       });
-      await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") {
+        throw new Error("The withdrawal transaction was rejected by the blockchain.");
+      }
       setStatus({ type: "success", message: `Payout withdrawn. Transaction: ${hash}` });
       await refreshOffersAndOrders();
+    } catch (error) {
+      console.error(error);
+      setStatus({ type: "error", message: getWalletErrorMessage(error) });
+    } finally {
+      setPendingAction("");
+    }
+  }
+
+  async function handleRetryDeliveryRelease(order) {
+    const actionKey = `release:${order.id}`;
+    if (pendingAction || !order.escrowId) return;
+    setPendingAction(actionKey);
+    try {
+      if (!(await ensureSupportedNetwork())) return;
+      const { publicClient, walletClient } = getEscrowClients(window.ethereum, targetChainId);
+      const [account] = await walletClient.requestAddresses();
+      if (order.buyer?.wallet && account.toLowerCase() !== order.buyer.wallet.toLowerCase()) {
+        throw new Error("Switch MetaMask to the buyer wallet before retrying delivery confirmation.");
+      }
+      const escrow = await publicClient.readContract({
+        address: escrowContractAddress,
+        abi: escrowAbi,
+        functionName: "getEscrow",
+        args: [BigInt(order.escrowId)]
+      });
+      if (escrow.status === 2) {
+        setStatus({ type: "success", message: "This escrow is already released. Switch to the seller wallet and withdraw the payout." });
+        return;
+      }
+      const hash = await walletClient.writeContract({
+        address: escrowContractAddress,
+        abi: escrowAbi,
+        functionName: "confirmDelivery",
+        account,
+        args: [BigInt(order.escrowId)]
+      });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") {
+        throw new Error("The blockchain rejected delivery confirmation. No payout was released.");
+      }
+      setStatus({ type: "success", message: "Delivery confirmed on-chain. The seller can now withdraw the payout." });
     } catch (error) {
       console.error(error);
       setStatus({ type: "error", message: getWalletErrorMessage(error) });
@@ -1451,6 +1499,7 @@ function App() {
                 {order.status === "AWAITING_ESCROW" && isBuyer && <button type="button" onClick={() => handleFundOrder(order)}>Fund escrow</button>}
                 {order.status === "FUNDED" && !isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "SHIPPED")}>Mark shipped</button>}
                 {order.status === "SHIPPED" && isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "DELIVERED")}>Confirm delivery</button>}
+                {order.status === "DELIVERED" && isBuyer && <button type="button" disabled={Boolean(pendingAction)} onClick={() => handleRetryDeliveryRelease(order)}>{pendingAction === `release:${order.id}` ? "Verifying release..." : "Verify delivery release"}</button>}
                 {order.status === "DELIVERED" && !isBuyer && <button type="button" disabled={Boolean(pendingAction)} onClick={() => handleWithdraw(order)}>{pendingAction === `withdraw:${order.id}` ? "Checking payout..." : "Withdraw payout"}</button>}
                 {["FUNDED", "SHIPPED"].includes(order.status) && isBuyer && <button type="button" className="secondary-button" onClick={() => handleOrderStatus(order.id, "DISPUTED")}>Raise dispute</button>}
               </article>;
