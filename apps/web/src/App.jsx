@@ -565,14 +565,6 @@ function App() {
       <>
       {screen === "marketplace" && (
       <header className="hero">
-        <button className="wallet-button" type="button" onClick={handleConnectWallet}>
-          {wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "Connect MetaMask"}
-        </button>
-        {wallet && (
-          <button className="logout-button" type="button" onClick={() => handleLogout()}>
-            Logout
-          </button>
-        )}
         {networkStatus === "unsupported" && (
           <p className="network-warning">
             Unsupported network. Switch MetaMask to {targetChainName}.
