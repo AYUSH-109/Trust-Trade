@@ -4,6 +4,8 @@ import {
   escrowAbi,
   escrowContractAddress,
   escrowDeliveryWindow,
+  calculateRequiredWei,
+  formatEther,
   getEscrowClients,
   getListingContractId,
   parseEther
@@ -42,6 +44,8 @@ function App() {
     category: ""
   });
   const [escrowAmount, setEscrowAmount] = useState("");
+  const [ethQuote, setEthQuote] = useState(null);
+  const [quoteStatus, setQuoteStatus] = useState("idle");
 
   useEffect(() => {
     if (!token) return undefined;
@@ -262,12 +266,32 @@ function App() {
       });
       setEditMode(false);
       setEscrowAmount("");
+      await loadEthQuote(result.data.id, result.data.price);
       setDetailStatus("ready");
     } catch (error) {
       console.error(error);
       setDetailStatus("error");
     }
 
+  }
+
+  async function loadEthQuote(listingId, listingPrice = selectedListing?.price) {
+    setQuoteStatus("loading");
+
+    try {
+      const response = await fetch(`${apiUrl}/api/market/eth-inr`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to load ETH/INR quote");
+
+      const requiredWei = calculateRequiredWei(listingPrice, result.data.ratePaise);
+      setEthQuote({ ...result.data, listingId });
+      setEscrowAmount(formatEther(requiredWei));
+      setQuoteStatus("ready");
+    } catch (error) {
+      console.error(error);
+      setEthQuote(null);
+      setQuoteStatus("error");
+    }
   }
 
   function handleEditChange(event) {
@@ -338,7 +362,16 @@ function App() {
       return;
     }
     if (!escrowAmount || Number(escrowAmount) <= 0) {
-      setStatus({ type: "error", message: "Enter the escrow deposit in ETH." });
+      setStatus({ type: "error", message: "The required ETH amount is not available." });
+      return;
+    }
+    if (
+      !ethQuote ||
+      ethQuote.listingId !== selectedListing.id ||
+      Date.parse(ethQuote.expiresAt) <= Date.now()
+    ) {
+      setStatus({ type: "error", message: "The ETH/INR quote expired. Refresh it before paying." });
+      await loadEthQuote(selectedListing.id, selectedListing.price);
       return;
     }
 
@@ -360,7 +393,8 @@ function App() {
         args: [
           selectedListing.seller.wallet,
           getListingContractId(selectedListing.id),
-          escrowDeliveryWindow
+          escrowDeliveryWindow,
+          calculateRequiredWei(selectedListing.price, ethQuote.ratePaise)
         ],
         value: parseEther(escrowAmount)
       });
@@ -639,22 +673,44 @@ function App() {
               )
             ) : (
               <div className="escrow-actions">
-                <label>
-                  Escrow deposit (ETH)
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.0001"
-                    value={escrowAmount}
-                    onChange={(event) => setEscrowAmount(event.target.value)}
-                    placeholder="e.g. 0.001"
-                  />
-                </label>
+                {quoteStatus === "loading" && (
+                  <p className="muted-copy">Loading live ETH/INR price...</p>
+                )}
+                {quoteStatus === "error" && (
+                  <p className="status-message error">
+                    Unable to load the live ETH/INR price.
+                    <button type="button" className="secondary-button" onClick={() => loadEthQuote(selectedListing.id, selectedListing.price)}>
+                      Retry quote
+                    </button>
+                  </p>
+                )}
+                {quoteStatus === "ready" && ethQuote && (
+                  <>
+                    <p className="escrow-price">
+                      Listing price: ₹{selectedListing.price}
+                    </p>
+                    <p className="escrow-price">
+                      Required escrow: <strong>{escrowAmount} ETH</strong>
+                    </p>
+                    <p className="muted-copy">
+                      Rate: ₹{ethQuote.ethInr.toLocaleString("en-IN")} per ETH. Quote expires at{" "}
+                      {new Date(ethQuote.expiresAt).toLocaleTimeString()}.
+                    </p>
+                    <button type="button" className="secondary-button" onClick={() => loadEthQuote(selectedListing.id, selectedListing.price)}>
+                      Refresh quote
+                    </button>
+                  </>
+                )}
                 <button
                   className="escrow-button"
                   type="button"
                   onClick={handleBuyWithEscrow}
-                  disabled={!token || !escrowContractAddress || status.type === "loading"}
+                  disabled={
+                    !token ||
+                    !escrowContractAddress ||
+                    quoteStatus !== "ready" ||
+                    status.type === "loading"
+                  }
                 >
                   {status.type === "loading" ? "Processing..." : "Fund with escrow"}
                 </button>

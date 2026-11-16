@@ -44,6 +44,7 @@ contract TrustTradeEscrow {
     error Unauthorized();
     error InvalidAddress();
     error InvalidAmount();
+    error IncorrectPaymentAmount();
     error InvalidState();
     error DeadlineNotReached();
     error EscrowNotFound();
@@ -70,10 +71,16 @@ contract TrustTradeEscrow {
     function createEscrow(
         address payable seller,
         bytes32 listingId,
-        uint256 deliveryWindow
+        uint256 deliveryWindow,
+        uint256 expectedAmount
     ) external payable returns (uint256 escrowId) {
         if (seller == address(0) || seller == msg.sender) revert InvalidAddress();
-        if (msg.value == 0 || deliveryWindow == 0) revert InvalidAmount();
+        if (
+            msg.value == 0 ||
+            deliveryWindow == 0 ||
+            expectedAmount == 0
+        ) revert InvalidAmount();
+        if (msg.value != expectedAmount) revert IncorrectPaymentAmount();
 
         escrowId = nextEscrowId++;
         uint256 deadline = block.timestamp + deliveryWindow;

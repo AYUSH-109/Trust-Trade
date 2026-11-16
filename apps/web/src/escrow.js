@@ -2,6 +2,7 @@ import {
   createPublicClient,
   createWalletClient,
   custom,
+  formatEther,
   keccak256,
   parseEther,
   stringToHex
@@ -21,7 +22,8 @@ export const escrowAbi = [
     inputs: [
       { name: "seller", type: "address" },
       { name: "listingId", type: "bytes32" },
-      { name: "deliveryWindow", type: "uint256" }
+      { name: "deliveryWindow", type: "uint256" },
+      { name: "expectedAmount", type: "uint256" }
     ],
     outputs: [{ name: "escrowId", type: "uint256" }]
   }
@@ -46,4 +48,21 @@ export function getListingContractId(listingId) {
   return keccak256(stringToHex(listingId));
 }
 
-export { parseEther };
+export function listingPriceToPaise(price) {
+  const [whole = "0", fraction = ""] = String(price).split(".");
+  const normalizedFraction = `${fraction}00`.slice(0, 2);
+  return BigInt(whole) * 100n + BigInt(normalizedFraction);
+}
+
+export function calculateRequiredWei(price, ratePaise) {
+  const pricePaise = listingPriceToPaise(price);
+  if (pricePaise <= 0n || ratePaise <= 0) {
+    throw new Error("Listing price and ETH/INR rate must be positive");
+  }
+
+  const numerator = pricePaise * 10n ** 18n;
+  const denominator = BigInt(ratePaise);
+  return (numerator + denominator - 1n) / denominator;
+}
+
+export { formatEther, parseEther };

@@ -288,6 +288,15 @@ h2 {
   width: 100%;
 }
 
+.escrow-price {
+  margin: 0;
+}
+
+.escrow-actions .status-message {
+  display: grid;
+  gap: 8px;
+}
+
 .secondary-button {
   background: var(--green-light);
   color: var(--green);

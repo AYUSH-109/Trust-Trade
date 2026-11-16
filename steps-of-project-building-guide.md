@@ -118,7 +118,7 @@ Hardhat tests cover the escrow state machine, authorization, refunds, dispute re
 
 Build contract deployment scripts, ABI handling, frontend contract calls, receipt handling, transaction records, and event synchronization.
 
-The frontend now requires the configured chain (Sepolia by default) before wallet authentication and clears the session when the account or network changes. Buyers can fund a listing escrow through the deployed Sepolia contract, wait for a confirmed receipt, and see the transaction hash. The current UI asks for an ETH deposit separately because listing prices are currently stored and displayed as INR; currency conversion is intentionally not assumed.
+The frontend now requires the configured chain (Sepolia by default) before wallet authentication and clears the session when the account or network changes. Buyers receive a short-lived live ETH/INR quote, see the exact calculated ETH payment, and fund a listing escrow through the deployed contract. The contract rejects any transaction whose `msg.value` differs from the expected amount.
 
 ## Phase 10: Orders and communication
 

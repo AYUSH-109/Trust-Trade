@@ -16,6 +16,7 @@ describe("TrustTradeEscrow", function () {
       seller.address,
       listingId,
       7 * 24 * 60 * 60,
+      amount,
       { value: amount }
     );
     return { amount, listingId };
@@ -79,5 +80,21 @@ describe("TrustTradeEscrow", function () {
 
     expect((await escrow.getEscrow(0)).status).to.equal(3);
     expect(await escrow.pendingWithdrawal(buyer.address)).to.equal(amount);
+  });
+
+  it("rejects a deposit that does not match the expected amount", async function () {
+    const { escrow, buyer, seller } = await deployFixture();
+    const amount = ethers.parseEther("1");
+    const listingId = ethers.encodeBytes32String("listing-1");
+
+    await expect(
+      escrow.connect(buyer).createEscrow(
+        seller.address,
+        listingId,
+        7 * 24 * 60 * 60,
+        ethers.parseEther("2"),
+        { value: amount }
+      )
+    ).to.be.revertedWithCustomError(escrow, "IncorrectPaymentAmount");
   });
 });
