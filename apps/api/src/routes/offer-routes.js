@@ -23,7 +23,13 @@ router.get("/", async (request, response) => {
 
 router.post("/", async (request, response) => {
   const { listingId, amount, message } = request.body ?? {};
-  if (typeof listingId !== "string" || typeof amount !== "string" || Number(amount) <= 0) {
+  if (
+    typeof listingId !== "string" ||
+    typeof amount !== "string" ||
+    !/^\d+(\.\d{1,2})?$/.test(amount.trim()) ||
+    !Number.isFinite(Number(amount)) ||
+    Number(amount) <= 0
+  ) {
     return response.status(400).json({ error: "Listing and positive offer amount are required" });
   }
 

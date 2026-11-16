@@ -1078,6 +1078,7 @@ function App() {
                 </form>
               ) : (
                 <div className="owner-actions">
+                  <p className="muted-copy">This is your listing. Switch to a different MetaMask account to make an offer.</p>
                   <button type="button" onClick={() => setEditMode(true)}>
                     Edit listing
                   </button>
@@ -1088,6 +1089,11 @@ function App() {
               )
             ) : (
               <div className="escrow-actions">
+                {!token && (
+                  <p className="status-message error">
+                    Connect MetaMask to make an offer or chat with the seller.
+                  </p>
+                )}
                 {quoteStatus === "loading" && (
                   <p className="muted-copy">Loading live ETH/INR price...</p>
                 )}
