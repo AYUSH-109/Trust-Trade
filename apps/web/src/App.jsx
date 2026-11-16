@@ -845,6 +845,22 @@ function App() {
       if (!(await ensureSupportedNetwork())) return;
       const { publicClient, walletClient } = getEscrowClients(window.ethereum, targetChainId);
       const [account] = await walletClient.requestAddresses();
+      const balance = await publicClient.getBalance({ address: account });
+      const gas = await publicClient.estimateContractGas({
+        address: escrowContractAddress,
+        abi: escrowAbi,
+        functionName: "withdraw",
+        account,
+        args: []
+      });
+      const gasPrice = await publicClient.getGasPrice();
+      if (balance < gas * gasPrice) {
+        setStatus({
+          type: "error",
+          message: "This account needs Sepolia ETH for gas. Add test ETH from a Sepolia faucet, then retry Withdraw payout."
+        });
+        return;
+      }
       const hash = await walletClient.writeContract({
         address: escrowContractAddress,
         abi: escrowAbi,
@@ -1402,7 +1418,6 @@ function App() {
                 {order.status === "AWAITING_ESCROW" && isBuyer && <button type="button" onClick={() => handleFundOrder(order)}>Fund escrow</button>}
                 {order.status === "FUNDED" && !isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "SHIPPED")}>Mark shipped</button>}
                 {order.status === "SHIPPED" && isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "DELIVERED")}>Confirm delivery</button>}
-                {order.status === "DELIVERED" && isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "RELEASE_ESCROW")}>Release escrow</button>}
                 {order.status === "DELIVERED" && !isBuyer && <button type="button" onClick={() => handleWithdraw(order)}>Withdraw payout</button>}
                 {["FUNDED", "SHIPPED"].includes(order.status) && isBuyer && <button type="button" className="secondary-button" onClick={() => handleOrderStatus(order.id, "DISPUTED")}>Raise dispute</button>}
               </article>;

@@ -56,6 +56,7 @@ export async function createListing(data, images = []) {
 
 export async function findListings() {
   const listings = await prisma.listing.findMany({
+    where: { status: "ACTIVE" },
     orderBy: { createdAt: "desc" },
     select: listingSelection
   });

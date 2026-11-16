@@ -93,14 +93,23 @@ export async function updateOrderStatus(id, userId, status, escrowId, fundingTxH
     (status === "DISPUTED" && ["FUNDED", "SHIPPED"].includes(order.status));
   if (!allowed) return { status: "invalid_state" };
 
-  const updated = await prisma.order.update({
-    where: { id },
-    data: {
-      status,
-      shippedAt: status === "SHIPPED" ? new Date() : undefined,
-      deliveredAt: status === "DELIVERED" ? new Date() : undefined
-    },
-    select: orderSelection
+  const updated = await prisma.$transaction(async (transaction) => {
+    const updatedOrder = await transaction.order.update({
+      where: { id },
+      data: {
+        status,
+        shippedAt: status === "SHIPPED" ? new Date() : undefined,
+        deliveredAt: status === "DELIVERED" ? new Date() : undefined
+      },
+      select: orderSelection
+    });
+    if (status === "DELIVERED") {
+      await transaction.listing.update({
+        where: { id: order.listingId },
+        data: { status: "SOLD" }
+      });
+    }
+    return updatedOrder;
   });
   return { status: "updated", order: serializeOrder(updated) };
 }
