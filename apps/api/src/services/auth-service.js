@@ -87,7 +87,36 @@ export async function findUserById(id) {
       id: true,
       wallet: true,
       name: true,
-      email: true
+      email: true,
+      phone: true,
+      contactInfo: true
     }
   });
+}
+
+export async function updateUserProfile(id, { name, email, phone, contactInfo }) {
+  const normalizedEmail = email?.trim() || null;
+  const existing = normalizedEmail
+    ? await prisma.user.findFirst({ where: { email: normalizedEmail, NOT: { id } } })
+    : null;
+  if (existing) return { status: "email_taken" };
+
+  const user = await prisma.user.update({
+    where: { id },
+    data: {
+      name: name?.trim() || null,
+      email: normalizedEmail,
+      phone: phone?.trim() || null,
+      contactInfo: contactInfo?.trim() || null
+    },
+    select: {
+      id: true,
+      wallet: true,
+      name: true,
+      email: true,
+      phone: true,
+      contactInfo: true
+    }
+  });
+  return { status: "updated", user };
 }

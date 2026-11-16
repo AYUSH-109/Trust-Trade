@@ -36,6 +36,13 @@ function App() {
   const [networkStatus, setNetworkStatus] = useState("idle");
   const [token, setToken] = useState(() => localStorage.getItem("trust_trade_token") ?? "");
   const [userId, setUserId] = useState("");
+  const [profile, setProfile] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    contactInfo: ""
+  });
+  const [profileStatus, setProfileStatus] = useState({ type: "idle", message: "" });
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({
     title: "",
@@ -69,6 +76,12 @@ function App() {
         if (!response.ok) throw new Error(result.error ?? "Session expired");
         setWallet(result.data.wallet);
         setUserId(result.data.id);
+        setProfile({
+          name: result.data.name ?? "",
+          email: result.data.email ?? "",
+          phone: result.data.phone ?? "",
+          contactInfo: result.data.contactInfo ?? ""
+        });
         setAuthStatus("Connected");
         setScreen("marketplace");
       })
@@ -296,6 +309,37 @@ function App() {
   function navigateTo(nextScreen) {
     setScreen(nextScreen);
     setProfileOpen(false);
+  }
+
+  function handleProfileChange(event) {
+    const { name, value } = event.target;
+    setProfile((current) => ({ ...current, [name]: value }));
+  }
+
+  async function handleProfileSubmit(event) {
+    event.preventDefault();
+    setProfileStatus({ type: "loading", message: "Saving profile..." });
+    try {
+      const response = await fetch(`${apiUrl}/api/auth/me`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(profile)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to update profile");
+      setProfile({
+        name: result.data.name ?? "",
+        email: result.data.email ?? "",
+        phone: result.data.phone ?? "",
+        contactInfo: result.data.contactInfo ?? ""
+      });
+      setProfileStatus({ type: "success", message: "Profile saved." });
+    } catch (error) {
+      setProfileStatus({ type: "error", message: error.message });
+    }
   }
 
   async function handleListingSelect(listingId) {
@@ -714,6 +758,7 @@ function App() {
           {profileOpen && (
             <div className="profile-menu">
               <button type="button" onClick={() => navigateTo("create")}>＋ Create listing</button>
+              <button type="button" onClick={() => navigateTo("profile")}>◎ My profile</button>
               <button type="button" onClick={() => navigateTo("my-listings")}>▦ My listings</button>
               <button type="button" onClick={() => navigateTo("offers")}>◌ Available offers</button>
               <button type="button" onClick={() => navigateTo("orders")}>▣ Orders</button>
@@ -1000,7 +1045,7 @@ function App() {
                 {quoteStatus === "ready" && ethQuote && (
                   <>
                     <p className="escrow-price">
-                      Listing price: ₹{selectedListing.price}
+                      {selectedOrderId ? "Agreed order amount" : "Listing price"}: ₹{selectedOrderAmount || selectedListing.price}
                     </p>
                     <p className="escrow-price">
                       Required escrow: <strong>{escrowAmount} ETH</strong>
@@ -1009,24 +1054,28 @@ function App() {
                       Rate: ₹{ethQuote.ethInr.toLocaleString("en-IN")} per ETH. Quote expires at{" "}
                       {new Date(ethQuote.expiresAt).toLocaleTimeString()}.
                     </p>
-                    <button type="button" className="secondary-button" onClick={() => loadEthQuote(selectedListing.id, selectedListing.price)}>
+                    <button type="button" className="secondary-button" onClick={() => loadEthQuote(selectedListing.id, selectedOrderAmount || selectedListing.price)}>
                       Refresh quote
                     </button>
                   </>
                 )}
-                <button
-                  className="escrow-button"
-                  type="button"
-                  onClick={handleBuyWithEscrow}
-                  disabled={
-                    !token ||
-                    !escrowContractAddress ||
-                    quoteStatus !== "ready" ||
-                    status.type === "loading"
-                  }
-                >
-                  {status.type === "loading" ? "Processing..." : "Fund with escrow"}
-                </button>
+                {selectedOrderId ? (
+                  <button
+                    className="escrow-button"
+                    type="button"
+                    onClick={handleBuyWithEscrow}
+                    disabled={
+                      !token ||
+                      !escrowContractAddress ||
+                      quoteStatus !== "ready" ||
+                      status.type === "loading"
+                    }
+                  >
+                    {status.type === "loading" ? "Processing..." : "Fund order escrow"}
+                  </button>
+                ) : (
+                  <p className="muted-copy">Escrow becomes available after a seller accepts your offer and you start an order.</p>
+                )}
                 <form className="offer-form" onSubmit={handleMakeOffer}>
                   <label>
                     Make an offer (₹)
@@ -1064,6 +1113,40 @@ function App() {
               </button>
             ))}
           </div>
+        </section>
+      )}
+
+      {screen === "profile" && (
+        <section className="workspace-card profile-workspace">
+          <p className="eyebrow">YOUR IDENTITY</p>
+          <h1>My profile</h1>
+          <p className="hero-copy">Share only the contact details you want other campus users to see.</p>
+          <form className="profile-form" onSubmit={handleProfileSubmit}>
+            <label>
+              Display name
+              <input name="name" value={profile.name} onChange={handleProfileChange} placeholder="How should buyers address you?" />
+            </label>
+            <div className="field-grid">
+              <label>
+                Email
+                <input name="email" type="email" value={profile.email} onChange={handleProfileChange} placeholder="you@example.com" />
+              </label>
+              <label>
+                Phone
+                <input name="phone" value={profile.phone} onChange={handleProfileChange} placeholder="+91 ..." />
+              </label>
+            </div>
+            <label>
+              Contact information
+              <textarea name="contactInfo" value={profile.contactInfo} onChange={handleProfileChange} rows="4" placeholder="Preferred contact method or campus pickup details" />
+            </label>
+            <label>
+              Connected wallet
+              <input value={wallet} readOnly />
+            </label>
+            {profileStatus.message && <p className={`status-message ${profileStatus.type}`} role="status">{profileStatus.message}</p>}
+            <button type="submit" disabled={profileStatus.type === "loading"}>{profileStatus.type === "loading" ? "Saving..." : "Save profile"}</button>
+          </form>
         </section>
       )}
 

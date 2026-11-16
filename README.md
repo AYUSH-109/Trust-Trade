@@ -19,7 +19,7 @@ Payments are protected by a blockchain-based escrow contract. Funds are released
 
 ## Project status
 
-Phase 8: Escrow contract foundation
+Phase 10: Demo-ready Sepolia marketplace
 
 - Hardhat workspace is available under `contracts/`.
 - `TrustTradeEscrow` implements deposits, shipment updates, delivery confirmation, refunds, disputes, admin resolution, and pull withdrawals.
@@ -28,6 +28,9 @@ Phase 8: Escrow contract foundation
 - ETH payments are calculated from a short-lived CoinGecko ETH/INR quote and exact payment amounts are enforced by the contract.
 - Offers and listing conversations are persisted in PostgreSQL behind authenticated API routes.
 - Accepted offers can be started as orders. The Orders workspace tracks escrow references and confirmed funding transactions, then enforces funded → shipped → delivered or disputed transitions for the correct buyer and seller.
+- Users can edit their display name, email, phone, and contact information from the Profile workspace.
+
+See [TESTING-AND-DEMO.md](./TESTING-AND-DEMO.md) for the complete local demonstration script and deployment readiness checklist.
 
 ### Contract commands
 

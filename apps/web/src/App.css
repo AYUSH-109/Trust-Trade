@@ -76,6 +76,19 @@ textarea {
   color: var(--green);
 }
 
+.hero > .network-status,
+.hero > .network-warning {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+  padding: 9px 13px;
+  border: 1px solid rgba(29, 91, 66, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(14px);
+}
+
 .network-warning {
   color: #a33a2f;
 }
@@ -993,6 +1006,23 @@ h1 em {
   border-top: 1px solid rgba(164, 22, 26, 0.12);
 }
 
+.profile-workspace {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.profile-form {
+  display: grid;
+  gap: 18px;
+  max-width: 720px;
+  margin-top: 30px;
+}
+
+.profile-form input[readonly] {
+  color: var(--muted);
+  background: rgba(111, 123, 114, 0.08);
+}
+
 .chat-workspace {
   display: grid;
   grid-template-columns: 0.8fr 1.2fr;
@@ -1172,6 +1202,13 @@ h1 em {
 
   .hero {
     margin-bottom: 42px;
+  }
+
+  .hero > .network-status,
+  .hero > .network-warning {
+    position: static;
+    display: inline-block;
+    margin-bottom: 22px;
   }
 
   .listing-grid {
