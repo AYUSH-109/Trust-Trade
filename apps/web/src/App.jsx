@@ -89,6 +89,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [chatRecipientId, setChatRecipientId] = useState("");
   const handleListingSelectRef = useRef(null);
+  const refreshOffersAndOrdersRef = useRef(null);
 
   async function refreshOffersAndOrders() {
     if (!token) return;
@@ -102,6 +103,16 @@ function App() {
     setOffers(offersResult.data);
     setOrders(ordersResult.data);
   }
+
+  refreshOffersAndOrdersRef.current = refreshOffersAndOrders;
+
+  useEffect(() => {
+    if (!token) return undefined;
+    const refreshTimer = window.setInterval(() => {
+      refreshOffersAndOrdersRef.current?.().catch((error) => console.error("Automatic refresh failed", error));
+    }, 10000);
+    return () => window.clearInterval(refreshTimer);
+  }, [token]);
 
   useEffect(() => {
     function handleHistoryChange(event) {
@@ -773,20 +784,79 @@ function App() {
     }
 
   async function handleOrderStatus(orderId, nextStatus) {
-      try {
-        const response = await fetch(`${apiUrl}/api/orders/${orderId}`, {
+    const order = orders.find((currentOrder) => currentOrder.id === orderId);
+    if (!order || !order.escrowId) {
+      setStatus({ type: "error", message: "This order is not linked to a funded escrow yet." });
+      return;
+    }
+
+    try {
+      if (!(await ensureSupportedNetwork())) {
+        setStatus({ type: "error", message: `Switch MetaMask to ${targetChainName} before updating escrow.` });
+        return;
+      }
+
+      const contractFunction = {
+        SHIPPED: "markShipped",
+        DELIVERED: "confirmDelivery",
+        DISPUTED: "raiseDispute",
+        RELEASE_ESCROW: "confirmDelivery"
+      }[nextStatus];
+      const { publicClient, walletClient } = getEscrowClients(window.ethereum, targetChainId);
+      const [account] = await walletClient.requestAddresses();
+      const hash = await walletClient.writeContract({
+        address: escrowContractAddress,
+        abi: escrowAbi,
+        functionName: contractFunction,
+        account,
+        args: contractFunction === "withdraw" ? [] : [BigInt(order.escrowId)]
+      });
+      await publicClient.waitForTransactionReceipt({ hash });
+
+      if (nextStatus === "RELEASE_ESCROW") {
+        setStatus({ type: "success", message: "Escrow release confirmed on-chain. The seller can now withdraw." });
+        return;
+      }
+
+      const response = await fetch(`${apiUrl}/api/orders/${orderId}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`
           },
           body: JSON.stringify({ status: nextStatus })
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error ?? "Unable to update order");
-        setOrders((current) => current.map((order) => order.id === orderId ? result.data : order));
-      } catch (error) {
-        setStatus({ type: "error", message: error.message });
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to update order");
+      setOrders((current) => current.map((currentOrder) => currentOrder.id === orderId ? result.data : currentOrder));
+      setStatus({ type: "success", message: `Order updated on-chain. Transaction: ${hash}` });
+    } catch (error) {
+      console.error(error);
+      setStatus({ type: "error", message: getWalletErrorMessage(error) });
+    }
+  }
+
+  async function handleWithdraw(order) {
+    if (!order.escrowId) {
+      setStatus({ type: "error", message: "This order has no escrow reference." });
+      return;
+    }
+    try {
+      if (!(await ensureSupportedNetwork())) return;
+      const { publicClient, walletClient } = getEscrowClients(window.ethereum, targetChainId);
+      const [account] = await walletClient.requestAddresses();
+      const hash = await walletClient.writeContract({
+        address: escrowContractAddress,
+        abi: escrowAbi,
+        functionName: "withdraw",
+        account,
+        args: []
+      });
+      await publicClient.waitForTransactionReceipt({ hash });
+      setStatus({ type: "success", message: `Payout withdrawn. Transaction: ${hash}` });
+    } catch (error) {
+      console.error(error);
+      setStatus({ type: "error", message: getWalletErrorMessage(error) });
     }
   }
 
@@ -957,14 +1027,13 @@ function App() {
           </div>
 
           <label>
-            Description
+            Description (optional)
             <textarea
               name="description"
               value={form.description}
               onChange={handleChange}
               placeholder="Describe the condition, pickup location, and anything a buyer should know."
               rows="5"
-              required
             />
           </label>
 
@@ -1214,7 +1283,7 @@ function App() {
                     Make an offer (₹)
                     <input type="number" min="1" step="1" value={offerAmount} onChange={(event) => setOfferAmount(event.target.value)} placeholder={selectedListing.price} />
                   </label>
-                  <input value={offerMessage} onChange={(event) => setOfferMessage(event.target.value)} placeholder="Add a note to the seller (optional)" />
+                  <input value={offerMessage} onChange={(event) => setOfferMessage(event.target.value)} placeholder="Message to seller (optional)" />
                   <div className="detail-action-row">
                     <button type="submit" className="secondary-button" disabled={!token || status.type === "loading"}>
                       {status.type === "loading" ? "Sending..." : "Send offer"}
@@ -1333,6 +1402,8 @@ function App() {
                 {order.status === "AWAITING_ESCROW" && isBuyer && <button type="button" onClick={() => handleFundOrder(order)}>Fund escrow</button>}
                 {order.status === "FUNDED" && !isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "SHIPPED")}>Mark shipped</button>}
                 {order.status === "SHIPPED" && isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "DELIVERED")}>Confirm delivery</button>}
+                {order.status === "DELIVERED" && isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "RELEASE_ESCROW")}>Release escrow</button>}
+                {order.status === "DELIVERED" && !isBuyer && <button type="button" onClick={() => handleWithdraw(order)}>Withdraw payout</button>}
                 {["FUNDED", "SHIPPED"].includes(order.status) && isBuyer && <button type="button" className="secondary-button" onClick={() => handleOrderStatus(order.id, "DISPUTED")}>Raise dispute</button>}
               </article>;
             })}</div>

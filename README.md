@@ -29,6 +29,7 @@ Phase 10: Demo-ready Sepolia marketplace
 - Offers and listing conversations are persisted in PostgreSQL behind authenticated API routes.
 - Accepted offers can be started as orders. The Orders workspace tracks escrow references and confirmed funding transactions, then enforces funded → shipped → delivered or disputed transitions for the correct buyer and seller.
 - Users can edit their display name, email, phone, and contact information from the Profile workspace.
+- Escrow lifecycle actions are synchronized with the deployed contract; sellers explicitly withdraw released payouts from the contract.
 
 See [TESTING-AND-DEMO.md](./TESTING-AND-DEMO.md) for the complete local demonstration script and deployment readiness checklist.
 

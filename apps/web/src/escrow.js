@@ -16,6 +16,34 @@ export const escrowDeliveryWindow = BigInt(
 
 export const escrowAbi = [
   {
+    name: "markShipped",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "escrowId", type: "uint256" }],
+    outputs: []
+  },
+  {
+    name: "confirmDelivery",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "escrowId", type: "uint256" }],
+    outputs: []
+  },
+  {
+    name: "raiseDispute",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "escrowId", type: "uint256" }],
+    outputs: []
+  },
+  {
+    name: "withdraw",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: []
+  },
+  {
     name: "EscrowCreated",
     type: "event",
     inputs: [

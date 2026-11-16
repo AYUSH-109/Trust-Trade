@@ -81,7 +81,7 @@ In MetaMask, select **Sepolia**, not Ethereum Mainnet. Import or use two separat
 1. Sign in with MetaMask.
 2. Open the profile menu and select **My profile**.
 3. Add a display name, email, phone, and preferred contact information.
-4. Select **Create listing**, add an item, price, description, and photos.
+4. Select **Create listing**, add an item, price, and photos. Description and offer notes are optional.
 5. Switch to the buyer account.
 
 ### Buyer account
@@ -103,9 +103,10 @@ In MetaMask, select **Sepolia**, not Ethereum Mainnet. Import or use two separat
 ### Complete the lifecycle
 
 1. Switch to the seller account and open **Orders**.
-2. Select **Mark shipped**.
-3. Switch to the buyer account and select **Confirm delivery**.
-4. For a dispute demonstration, use a funded or shipped order and select **Raise dispute** instead.
+2. Select **Mark shipped** and confirm the blockchain transaction.
+3. Switch to the buyer account and select **Confirm delivery**, then confirm the blockchain transaction.
+4. Switch back to the seller account and select **Withdraw payout**. Escrow uses a pull-payment model, so this transaction moves the released ETH into the seller wallet.
+5. For a dispute demonstration, use a funded or shipped order and select **Raise dispute** instead.
 
 ## 6. API smoke checks
 

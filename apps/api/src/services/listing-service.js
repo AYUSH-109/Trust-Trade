@@ -31,6 +31,7 @@ const listingSelection = {
 function serializeListing(listing) {
   return {
     ...listing,
+    description: listing.description ?? "",
     price: listing.price.toString()
   };
 }

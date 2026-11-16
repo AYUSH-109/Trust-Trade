@@ -53,7 +53,7 @@ model User {
 model Listing {
   id          String        @id @default(uuid())
   title       String
-  description String
+  description String?
   price       Decimal       @db.Decimal(12, 2)
   category    String
   status      ListingStatus @default(ACTIVE)

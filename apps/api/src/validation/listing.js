@@ -18,10 +18,6 @@ export function validateCreateListing(input) {
     errors.title = "Title is required";
   }
 
-  if (!isNonEmptyString(input.description)) {
-    errors.description = "Description is required";
-  }
-
   if (!isValidPrice(input.price)) {
     errors.price = "Price must be a non-negative number";
   }
@@ -35,7 +31,10 @@ export function validateCreateListing(input) {
 
 export function getListingData(input, sellerId) {
   const data = {};
-  const fields = ["title", "description", "category"];
+  const fields = ["title", "category"];
+  if ("description" in input) {
+    data.description = input.description.trim() || null;
+  }
 
   for (const field of fields) {
     if (field in input) {
