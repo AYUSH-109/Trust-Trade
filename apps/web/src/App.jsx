@@ -88,11 +88,15 @@ function App() {
   const [chatMessage, setChatMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [chatRecipientId, setChatRecipientId] = useState("");
+  const [pendingAction, setPendingAction] = useState("");
   const handleListingSelectRef = useRef(null);
   const refreshOffersAndOrdersRef = useRef(null);
+  const refreshInFlightRef = useRef(false);
 
   async function refreshOffersAndOrders() {
-    if (!token) return;
+    if (!token || refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
+    try {
     const headers = { Authorization: `Bearer ${token}` };
     const [offersResponse, ordersResponse] = await Promise.all([
       fetch(`${apiUrl}/api/offers`, { headers }),
@@ -102,6 +106,9 @@ function App() {
     const ordersResult = await readApiResponse(ordersResponse, "Unable to refresh orders");
     setOffers(offersResult.data);
     setOrders(ordersResult.data);
+    } finally {
+      refreshInFlightRef.current = false;
+    }
   }
 
   refreshOffersAndOrdersRef.current = refreshOffersAndOrders;
@@ -737,6 +744,9 @@ function App() {
   }
 
   async function handleOfferStatus(offerId, nextStatus) {
+    const actionKey = `offer:${offerId}`;
+    if (pendingAction) return;
+    setPendingAction(actionKey);
     try {
       const response = await fetch(`${apiUrl}/api/offers/${offerId}`, {
         method: "PATCH",
@@ -746,8 +756,7 @@ function App() {
         },
         body: JSON.stringify({ status: nextStatus })
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Unable to update offer");
+      const result = await readApiResponse(response, "Unable to update offer");
       setOffers((current) =>
         current.map((offer) => {
           if (offer.id === offerId) return result.data;
@@ -757,10 +766,13 @@ function App() {
           return offer;
         })
       );
+      await refreshOffersAndOrders();
+      setStatus({ type: "success", message: nextStatus === "ACCEPTED" ? "Offer accepted." : "Offer declined." });
     } catch (error) {
       setStatus({ type: "error", message: error.message });
+    } finally {
+      setPendingAction("");
     }
-
   }
 
   async function handleCreateOrder(offerId) {
@@ -837,14 +849,32 @@ function App() {
   }
 
   async function handleWithdraw(order) {
+    const actionKey = `withdraw:${order.id}`;
+    if (pendingAction) return;
+    setPendingAction(actionKey);
     if (!order.escrowId) {
       setStatus({ type: "error", message: "This order has no escrow reference." });
+      setPendingAction("");
       return;
     }
     try {
       if (!(await ensureSupportedNetwork())) return;
       const { publicClient, walletClient } = getEscrowClients(window.ethereum, targetChainId);
       const [account] = await walletClient.requestAddresses();
+      if (order.seller?.wallet && account.toLowerCase() !== order.seller.wallet.toLowerCase()) {
+        setStatus({ type: "error", message: "Switch MetaMask to the seller wallet before withdrawing this payout." });
+        return;
+      }
+      const pendingAmount = await publicClient.readContract({
+        address: escrowContractAddress,
+        abi: escrowAbi,
+        functionName: "pendingWithdrawal",
+        args: [account]
+      });
+      if (pendingAmount === 0n) {
+        setStatus({ type: "error", message: "No payout is currently available for this wallet." });
+        return;
+      }
       const balance = await publicClient.getBalance({ address: account });
       const gas = await publicClient.estimateContractGas({
         address: escrowContractAddress,
@@ -870,9 +900,12 @@ function App() {
       });
       await publicClient.waitForTransactionReceipt({ hash });
       setStatus({ type: "success", message: `Payout withdrawn. Transaction: ${hash}` });
+      await refreshOffersAndOrders();
     } catch (error) {
       console.error(error);
       setStatus({ type: "error", message: getWalletErrorMessage(error) });
+    } finally {
+      setPendingAction("");
     }
   }
 
@@ -1383,7 +1416,7 @@ function App() {
             Refresh offers
           </button>
           {offers.filter((offer) => offer.status !== "REJECTED").length === 0 ? <p className="muted-copy">No active offers yet.</p> : (
-            <div className="offer-list">{offers.filter((offer) => offer.status !== "REJECTED").map((offer) => <article className="offer-row" key={offer.id}><div><strong>{offer.listing.title}</strong><p>{offer.message || "No note attached"}</p></div><b>₹{offer.amount}</b><span>{offer.status}</span>{offer.sellerId === userId && offer.status === "PENDING" && <><button type="button" onClick={() => handleOfferStatus(offer.id, "ACCEPTED")}>Accept</button><button type="button" className="secondary-button" onClick={() => handleOfferStatus(offer.id, "REJECTED")}>Decline</button></>}{offer.buyerId === userId && offer.status === "ACCEPTED" && !orders.some((order) => order.offerId === offer.id) && <button type="button" onClick={() => handleCreateOrder(offer.id)}>Refresh order</button>}<button type="button" onClick={() => { setSelectedListing({ id: offer.listingId, title: offer.listing.title, seller: offer.seller }); setChatRecipientId(offer.buyerId); navigateTo("chat"); }}>Chat</button></article>)}</div>
+            <div className="offer-list">{offers.filter((offer) => offer.status !== "REJECTED").map((offer) => <article className="offer-row" key={offer.id}><div><strong>{offer.listing.title}</strong><p>{offer.message || "No note attached"}</p></div><b>₹{offer.amount}</b><span>{offer.status}</span>{offer.sellerId === userId && offer.status === "PENDING" && <><button type="button" disabled={Boolean(pendingAction)} onClick={() => handleOfferStatus(offer.id, "ACCEPTED")}>{pendingAction === `offer:${offer.id}` ? "Accepting..." : "Accept"}</button><button type="button" className="secondary-button" disabled={Boolean(pendingAction)} onClick={() => handleOfferStatus(offer.id, "REJECTED")}>{pendingAction === `offer:${offer.id}` ? "Declining..." : "Decline"}</button></>}{offer.buyerId === userId && offer.status === "ACCEPTED" && !orders.some((order) => order.offerId === offer.id) && <button type="button" onClick={() => handleCreateOrder(offer.id)}>Refresh order</button>}<button type="button" onClick={() => { setSelectedListing({ id: offer.listingId, title: offer.listing.title, seller: offer.seller }); setChatRecipientId(offer.buyerId); navigateTo("chat"); }}>Chat</button></article>)}</div>
           )}
           {offers.some((offer) => offer.status === "REJECTED") && (
             <details className="rejected-offers">
@@ -1418,7 +1451,7 @@ function App() {
                 {order.status === "AWAITING_ESCROW" && isBuyer && <button type="button" onClick={() => handleFundOrder(order)}>Fund escrow</button>}
                 {order.status === "FUNDED" && !isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "SHIPPED")}>Mark shipped</button>}
                 {order.status === "SHIPPED" && isBuyer && <button type="button" onClick={() => handleOrderStatus(order.id, "DELIVERED")}>Confirm delivery</button>}
-                {order.status === "DELIVERED" && !isBuyer && <button type="button" onClick={() => handleWithdraw(order)}>Withdraw payout</button>}
+                {order.status === "DELIVERED" && !isBuyer && <button type="button" disabled={Boolean(pendingAction)} onClick={() => handleWithdraw(order)}>{pendingAction === `withdraw:${order.id}` ? "Checking payout..." : "Withdraw payout"}</button>}
                 {["FUNDED", "SHIPPED"].includes(order.status) && isBuyer && <button type="button" className="secondary-button" onClick={() => handleOrderStatus(order.id, "DISPUTED")}>Raise dispute</button>}
               </article>;
             })}</div>

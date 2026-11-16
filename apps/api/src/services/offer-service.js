@@ -55,16 +55,18 @@ export async function updateOfferStatus(id, userId, status) {
   if (offer.status !== "PENDING") return { status: "invalid_state" };
 
   const updated = await prisma.$transaction(async (transaction) => {
-    const listing = await transaction.listing.findUnique({
-      where: { id: offer.listingId },
-      select: { status: true }
-    });
-    if (!listing || listing.status !== "ACTIVE") throw new Error("Listing is no longer available");
+    if (status === "ACCEPTED") {
+      const listing = await transaction.listing.findUnique({
+        where: { id: offer.listingId },
+        select: { status: true }
+      });
+      if (!listing || listing.status !== "ACTIVE") throw new Error("Listing is no longer available");
 
-    const existingOrder = await transaction.order.findFirst({
-      where: { listingId: offer.listingId }
-    });
-    if (existingOrder) throw new Error("Listing already has an order");
+      const existingOrder = await transaction.order.findFirst({
+        where: { listingId: offer.listingId }
+      });
+      if (existingOrder) throw new Error("Listing already has an order");
+    }
 
     const accepted = await transaction.offer.update({
       where: { id },

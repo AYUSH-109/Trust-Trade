@@ -44,6 +44,13 @@ export const escrowAbi = [
     outputs: []
   },
   {
+    name: "pendingWithdrawal",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "amount", type: "uint256" }]
+  },
+  {
     name: "EscrowCreated",
     type: "event",
     inputs: [
