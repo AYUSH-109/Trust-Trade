@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
 import { createWalletClient, custom } from "viem";
+import {
+  escrowAbi,
+  escrowContractAddress,
+  escrowDeliveryWindow,
+  getEscrowClients,
+  getListingContractId,
+  parseEther
+} from "./escrow";
 import "./App.css";
 
 const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
@@ -33,6 +41,7 @@ function App() {
     price: "",
     category: ""
   });
+  const [escrowAmount, setEscrowAmount] = useState("");
 
   useEffect(() => {
     if (!token) return undefined;
@@ -252,6 +261,7 @@ function App() {
         category: result.data.category
       });
       setEditMode(false);
+      setEscrowAmount("");
       setDetailStatus("ready");
     } catch (error) {
       console.error(error);
@@ -310,6 +320,60 @@ function App() {
       setStatus({ type: "success", message: "Listing deleted." });
     } catch (error) {
       setStatus({ type: "error", message: error.message });
+    }
+
+  }
+
+  async function handleBuyWithEscrow() {
+    if (!window.ethereum) {
+      setStatus({ type: "error", message: "MetaMask is not installed." });
+      return;
+    }
+    if (!escrowContractAddress) {
+      setStatus({ type: "error", message: "Escrow contract is not configured." });
+      return;
+    }
+    if (!wallet || selectedListing.seller.wallet.toLowerCase() === wallet.toLowerCase()) {
+      setStatus({ type: "error", message: "You cannot buy your own listing." });
+      return;
+    }
+    if (!escrowAmount || Number(escrowAmount) <= 0) {
+      setStatus({ type: "error", message: "Enter the escrow deposit in ETH." });
+      return;
+    }
+
+    setStatus({ type: "loading", message: "Confirm the escrow transaction in MetaMask..." });
+
+    try {
+      if (!(await ensureSupportedNetwork())) return;
+
+      const { publicClient, walletClient } = getEscrowClients(
+        window.ethereum,
+        targetChainId
+      );
+      const [account] = await walletClient.requestAddresses();
+      const hash = await walletClient.writeContract({
+        address: escrowContractAddress,
+        abi: escrowAbi,
+        functionName: "createEscrow",
+        account,
+        args: [
+          selectedListing.seller.wallet,
+          getListingContractId(selectedListing.id),
+          escrowDeliveryWindow
+        ],
+        value: parseEther(escrowAmount)
+      });
+
+      setStatus({ type: "loading", message: "Waiting for blockchain confirmation..." });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      setStatus({
+        type: "success",
+        message: `Escrow funded. Transaction: ${receipt.transactionHash}`
+      });
+    } catch (error) {
+      console.error(error);
+      setStatus({ type: "error", message: error.shortMessage ?? error.message });
     }
   }
 
@@ -574,9 +638,30 @@ function App() {
                 </div>
               )
             ) : (
-              <button className="escrow-button" type="button" disabled>
-                Buy with escrow (coming next)
-              </button>
+              <div className="escrow-actions">
+                <label>
+                  Escrow deposit (ETH)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    value={escrowAmount}
+                    onChange={(event) => setEscrowAmount(event.target.value)}
+                    placeholder="e.g. 0.001"
+                  />
+                </label>
+                <button
+                  className="escrow-button"
+                  type="button"
+                  onClick={handleBuyWithEscrow}
+                  disabled={!token || !escrowContractAddress || status.type === "loading"}
+                >
+                  {status.type === "loading" ? "Processing..." : "Fund with escrow"}
+                </button>
+                {!escrowContractAddress && (
+                  <p className="muted-copy">Configure the deployed escrow contract first.</p>
+                )}
+              </div>
             )}
           </div>
         </section>

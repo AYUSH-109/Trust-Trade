@@ -24,6 +24,7 @@ Phase 8: Escrow contract foundation
 - Hardhat workspace is available under `contracts/`.
 - `TrustTradeEscrow` implements deposits, shipment updates, delivery confirmation, refunds, disputes, admin resolution, and pull withdrawals.
 - The frontend requires Sepolia by default before wallet authentication.
+- The frontend can fund a listing escrow using the deployed Sepolia contract.
 
 ### Contract commands
 
@@ -39,3 +40,5 @@ npm run deploy:sepolia --workspace contracts
 ```
 
 Never use a wallet containing real funds for deployment or testing.
+
+For the frontend, copy `apps/web/.env.example` to `apps/web/.env`. The deployed contract address is public configuration; never put private keys in the frontend environment.
